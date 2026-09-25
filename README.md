@@ -11,7 +11,7 @@ The field moves fast enough that confidently repeating a stale fact is a real in
 Each question hides its answer behind a collapsible block. Read the question, answer it out loud, *then* expand. Reading answers you haven't attempted feels productive and teaches almost nothing.
 
 ```
-questions/    — 78 questions with answers, grouped by topic
+questions/    — 101 questions with answers, grouped by topic
 reference/    — cheat sheets for the things that changed recently
 sources.md    — every source, with its quality grading
 ```
@@ -44,6 +44,9 @@ Not everything here is equally certain, and the notes say so.
 | [Context engineering](questions/context-engineering.md) | 8 | Context rot, compaction, agent memory, structured outputs. |
 | [Cost and caching](questions/cost-and-caching.md) | 7 | Prompt vs semantic caching, routing, cost attribution. |
 | [LLM security](questions/llm-security.md) | 8 | Prompt injection, the lethal trifecta, least-privilege agents. |
+| [Multimodal](questions/multimodal.md) | 7 | VLM architecture, image token cost, document parsing, voice latency. |
+| [LLMOps](questions/llmops.md) | 8 | Tracing, silent model drift, prompt rollout, deprecations, SLOs. |
+| [Data curation](questions/data-curation.md) | 8 | Dedup, quality classifiers, model collapse, preference data, mixtures. |
 | [Interview process](questions/interview-process.md) | 3 | Loop shape, and whether you may use AI in it. |
 
 ## Reference
@@ -56,7 +59,7 @@ Not everything here is equally certain, and the notes say so.
 
 ## A caveat on dates
 
-Compiled 10 September 2026. The protocol material is the most perishable: MCP's stateless revision was roughly six weeks old at the time of writing and SDK migration was still in flux. Re-check anything version-pinned before relying on it in an interview.
+Compiled 10 September 2026. The protocol material is the most perishable: MCP's stateless revision was roughly six weeks old at the time of writing and SDK migration was still in flux. Re-check anything version-pinned before relying on it in an interview. The post-training, context engineering, cost and caching, LLM security, multimodal, LLMOps and data curation files were added 25 September 2026, and their pricing and limits come from provider docs fetched that day.
 
 ## Licence
 

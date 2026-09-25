@@ -84,10 +84,12 @@ Every one is a trade, and naming the cost is the answer:
 
 ### 4. How do you make a GenAI system observable in production?
 
+`single-source`
+
 <details>
 <summary>Answer</summary>
 
-Trace every LLM call and tool call as spans, using the **OpenTelemetry GenAI semantic conventions** so the data isn't vendor-locked.
+Trace every LLM call and tool call as spans, using the **OpenTelemetry GenAI semantic conventions** so the data isn't vendor-locked. Those conventions are still in Development status and can still change (see [llmops.md question 1](llmops.md#1-how-would-you-trace-an-agent-run-end-to-end-and-what-is-the-actual-status-of-the-opentelemetry-genai-conventions)), so "not vendor-locked" is the goal, not yet a guarantee — pin the semconv version and wrap instrumentation behind a thin layer of your own.
 
 Capture: prompt and completion token counts, model and version, latency split into **TTFT and total**, tool name and outcome, and a stable trace id linking back to the user-visible interaction.
 

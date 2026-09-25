@@ -1,6 +1,6 @@
 # Questions
 
-78 questions across thirteen topics. Each answer sits behind a collapsible block — answer out loud first, then expand.
+101 questions across sixteen topics. Each answer sits behind a collapsible block — answer out loud first, then expand.
 
 | File | Questions | Focus |
 |---|---|---|
@@ -16,6 +16,9 @@
 | [context-engineering.md](context-engineering.md) | 8 | Context rot, compaction, memory, structured outputs. |
 | [cost-and-caching.md](cost-and-caching.md) | 7 | Prompt vs semantic caching, routing, spend attribution. Pricing from docs fetched 2026-09-25. |
 | [llm-security.md](llm-security.md) | 8 | Injection, lethal trifecta, OWASP 2025, CaMeL, least privilege. |
+| [multimodal.md](multimodal.md) | 7 | VLMs, image tokens, OCR vs VLM parsing, voice agents. Token maths from docs fetched 2026-09-25. |
+| [llmops.md](llmops.md) | 8 | OTel GenAI tracing, drift, rollout, deprecation playbooks. |
+| [data-curation.md](data-curation.md) | 8 | LIMA, dedup, FineWeb-Edu, model collapse, DPO pairs, mixtures. |
 | [interview-process.md](interview-process.md) | 3 | Loop shape, AI-use policy, in-person shift. |
 
 Confidence badges are explained in the [root README](../README.md#confidence-legend).
