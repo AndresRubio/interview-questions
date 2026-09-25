@@ -2,6 +2,8 @@
 
 Reported as the single largest skill gap in the AI engineering candidate pool as of mid-2026, and interviewers are said to weight evaluation design **above** model-building — on the premise that failed LLM products almost always trace back to absent evaluation.
 
+> **This file is *application* evaluation** — is your system answering correctly, is your judge validated. For *model* evaluation — perplexity, bits per byte, quantization damage — see [model-evaluation.md](model-evaluation.md). Knowing that these are different layers is itself a thing interviews probe.
+
 The depth expected here is higher than most candidates assume. "We used RAGAS" is not an answer.
 
 ---
