@@ -37,7 +37,7 @@ Why the distinction matters in an interview: in an agent, most tokens in the win
 
 Because accuracy is not flat across the window, and effective capacity is well below the advertised size.
 
-- **Lost in the middle.** Liu et al., *Lost in the Middle: How Language Models Use Long Contexts* (TACL 2023, arXiv 2307.03172), found a **U-shaped curve**: performance is highest when the relevant information sits at the start or end of the input, and drops sharply when it is in the middle. They showed this on multi-document QA and key-value retrieval, including with models built for long context.
+- **Lost in the middle.** Liu et al., *Lost in the Middle: How Language Models Use Long Contexts* (TACL 2024, arXiv 2307.03172), found a **U-shaped curve**: performance is highest when the relevant information sits at the start or end of the input, and drops sharply when it is in the middle. They showed this on multi-document QA and key-value retrieval, including with models built for long context.
 - **Context rot.** Chroma's *Context Rot* report tested **18 models** from Anthropic, OpenAI, Google and Alibaba. It found performance becomes steadily less reliable as input grows, even on simple tasks. Three results worth knowing:
   - **Distractors compound.** One topically related non-answer hurts, several hurt more, and different distractors do different amounts of damage.
   - **Lower question-answer similarity makes length hurt faster.** Needle-in-a-haystack tests with exact lexical matches make models look better than they are.
@@ -88,7 +88,7 @@ Simon Willison gives a concrete case. A 27-minute ChatGPT agent session produced
 
 **Fixed interval or threshold** (every N tokens, or at X% full) is easy to reason about, and it's what most harnesses ship. Strands, for example, triggers at 85%. The problem is that **it's blind to the task**. It can fire in the middle of a derivation and throw away the half-built argument you needed.
 
-**Learned or model-judged readiness** asks whether this is a good moment. *Self-Compacting Language Model Agents* (Li et al., arXiv **2606.23525**, 2026) gives the model two things. The first is a compaction tool. The second is a rubric saying when to fire (a sub-task has resolved, or the trajectory is converging) and when to hold off (mid-derivation, or stuck). For math, the rubric is checked at each round boundary, and a round is up to 16,384 tokens.
+**Learned or model-judged readiness** asks whether this is a good moment. *Self-Compacting Language Model Agents* (Li et al., arXiv **2606.23525**, 2026) gives the model two things. The first is a compaction tool. The second is a rubric saying when to fire: either the final answer has been stated, or the agent is stuck **and** the next step is identifiable — being stuck can trigger compaction under that second condition, not only suppress it, provided there's a clear next step to resume into. The rubric holds off mid-derivation, where interrupting would throw away a half-built argument. For math, the rubric is checked at each round boundary, and a round is up to 16,384 tokens.
 
 On IMO-AnswerBench with Qwen3-30B-A3B-Instruct, the scores were **52.1 for SelfCompact, 48.7 for fixed-interval and 45.2 for no compaction**. Gains were bigger on smaller models with thinking disabled. The authors say it matches or beats fixed-interval summarisation at **30-70% lower cost per question**. The paper also reports that giving the model the tool *without* the rubric works poorly, because models fire it at bad moments or never.
 
@@ -117,7 +117,7 @@ Cal Paterson's **Memoryfields** makes the low-mechanism case. His argument is th
 
 The other side is the crowded graph-memory market. A Decoding AI teardown names Graphiti, mem0, cognee, HydraDB and Neo4j's agent memory. It concludes that "nobody has cracked it yet" and recommends owning the business logic through an SDK rather than building from scratch or buying a whole platform.
 
-Memory also has to be **surfaced at the right moment**, not just stored. Meta's Proactive Memory Agent (as reported by *The Batch*, issue 371) runs next to the acting agent. It keeps notes on facts, fixes, failed commands and open tasks, and injects reminders at chosen moments. Reported gains include Claude Sonnet 4.5 on Terminal-Bench 2.0 rising from **37.6% to 45.9%**, without retraining.
+Memory also has to be **surfaced at the right moment**, not just stored. Meta's Proactive Memory Agent (as reported by *The Batch*, issue 371) runs next to the acting agent. It keeps notes on facts, fixes, failed commands and open tasks, and injects reminders at chosen moments. Reported gains include Claude Sonnet 4.5 on Terminal-Bench 2.0 rising from **37.6% to 45.9%**, without retraining — that gain was measured with the larger of the two memory models Meta tested, so don't quote it as if it were the default configuration.
 
 **Opinionated take:** start with files plus a DB. Add vectors only when you have a real fuzzy-recall need. Treat graph memory as something you have to justify. Whatever you choose, **memory the agent never reads back is just logging**.
 
@@ -132,14 +132,9 @@ Memory also has to be **surfaced at the right moment**, not just stored. Meta's 
 <details>
 <summary>Answer</summary>
 
-Prefix caching only pays off when the start of the prompt is **byte-identical** across calls. So:
+Prefix caching only pays off when the start of the prompt is **byte-identical** across calls. The general rules, the numbers behind them, and how people accidentally defeat their own cache are covered in [cost-and-caching.md question 3](cost-and-caching.md#3-what-makes-a-prompt-cache-friendly-and-how-do-people-accidentally-defeat-their-own-cache) — read that for the full answer.
 
-- **Order by volatility.** Put the stable parts first (system prompt, tool definitions, long reference docs) and the volatile parts last (the latest turn, fresh tool results).
-- **Don't put timestamps, request IDs or shuffled tool lists near the top.** One changed byte early on invalidates everything after it.
-- **Append, don't rewrite.** Editing history in place, *including compaction*, breaks the cache from the edit point onward. That's a hidden cost of aggressive compaction. It's another reason to compact rarely and all at once rather than trimming a little every turn.
-- **Treat config as part of the prefix.** For example, Anthropic's structured-outputs docs note that changing the output format invalidates the prompt cache for that thread.
-
-Pricing, TTLs and hit-rate numbers are covered in [cost-and-caching.md](cost-and-caching.md).
+The context-specific point to add here: **append, don't rewrite.** Editing history in place, *including compaction*, breaks the cache from the edit point onward. That's a hidden cost of aggressive compaction, and it's another reason to compact rarely and all at once (Q3, Q4) rather than trimming a little every turn.
 
 </details>
 
@@ -152,7 +147,7 @@ Pricing, TTLs and hit-rate numbers are covered in [cost-and-caching.md](cost-and
 <details>
 <summary>Answer</summary>
 
-[agent-architecture.md](agent-architecture.md) (Q1, Q6) covers subagents as a harness part. The context-engineering point is that **a subagent is a disposable context window**. It can spend 50K tokens exploring a codebase, then return a 1-2K-token summary. The orchestrator never sees the exploration, so none of that output causes rot in its window. Anthropic's post describes this pattern: specialised sub-agents with clean windows return condensed results to a coordinator.
+[agent-architecture.md](agent-architecture.md) (question 1, [question 6](agent-architecture.md#6-how-do-you-manage-context-in-a-long-running-agent)) covers subagents as a harness part. The context-engineering point is that **a subagent is a disposable context window**. It can spend 50K tokens exploring a codebase, then return a 1-2K-token summary. The orchestrator never sees the exploration, so none of that output causes rot in its window. Anthropic's post describes this pattern: specialised sub-agents with clean windows return condensed results to a coordinator.
 
 The trade-offs a senior candidate should name:
 
@@ -182,6 +177,7 @@ Costs and caveats, from the docs:
 - The schema adds input tokens.
 - Refusals are special. OpenAI returns a separate `refusal` field instead of schema-shaped output.
 - OpenAI's older **JSON mode** guarantees valid JSON but **not** schema adherence. Don't mix the two up.
+- **Treat the output format as part of the cache prefix.** Anthropic's structured-outputs docs note that changing the output format invalidates the prompt cache for that thread — see [cost-and-caching.md question 3](cost-and-caching.md#3-what-makes-a-prompt-cache-friendly-and-how-do-people-accidentally-defeat-their-own-cache) for the general cache-busting rules this is an instance of.
 
 **Validate-and-retry.** Generate freely, then parse against a schema (Pydantic, Zod) and retry with the error message on failure. It works with any model and can check *semantic* rules that grammars can't, like "end date after start date". The price is extra latency and cost on failures, and possible retry loops.
 
@@ -194,7 +190,3 @@ Costs and caveats, from the docs:
 - Use constrained decoding when a parse failure is costly, such as a tool call or a downstream system. Keep validation for the semantic rules anyway.
 
 </details>
-
----
-
-**Sources** (all fetched 2026-09-25): [Anthropic, Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) · [Chroma, Context Rot](https://www.trychroma.com/research/context-rot) · [Liu et al., Lost in the Middle](https://arxiv.org/abs/2307.03172) · [Li et al., Self-Compacting Language Model Agents](https://arxiv.org/abs/2606.23525) · [Simon Willison](https://simonw.substack.com/p/navierstokes-rubygems-attacked-gis) · [fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction) · [ContextPilot-14B](https://huggingface.co/tencent/ContextPilot-14B) · [Strands Harness](https://strandsagents.com/blog/introducing-strands-harness/) · [Memoryfields](https://calpaterson.com/memoryfields.html) · [Decoding AI, unified memory](https://www.decodingai.com/p/how-to-implement-a-unified-memory-from-scratch) · [The Batch 371](https://www.deeplearning.ai/the-batch/issue-371) · [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) · [Anthropic structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) · [Tam et al., Let Me Speak Freely?](https://arxiv.org/abs/2408.02442)

@@ -12,7 +12,8 @@ They're kept rather than deleted because several are things you'd plausibly say 
 | That A2A v1.0 added **Signed Agent Cards** for cryptographic identity verification | `0-3` |
 | That Agent Skills is framed as a vendor-neutral standard originally created by Anthropic and adopted beyond its originator | `1-2` |
 | That `SKILL.md` specifies a three-stage progressive-disclosure loading model with concrete budgets — name+description ~100 tokens at startup, body under 5,000 tokens and 500 lines on activation | `0-3` |
-| That Anthropic cache reads cost 0.1× base input with break-even at ~1.4 reads per write; that OpenAI caches automatically at 50% off with a 1,024-token minimum *(as stated by vendor blogs)* | `0-3` |
+| That OpenAI caches automatically at a flat "50% off" discount *(not confirmed from the cited blogs)* | `0-3` |
+| That the break-even point for prompt caching is ~1.4 reads per write *(not confirmed from the cited blogs)* | `0-3` |
 | That semantic caching serves 20–45% of production traffic, a cosine threshold ≥0.85 is the right default, and it cuts cost 40–70% (850ms → 120ms) | `0-3` |
 | That hybrid model routing cuts LLM usage 37–46% and frontier models cost 20–30× more per token | `0-3` |
 | That Claude Code's changelog records allow-list wildcards matching beyond their intended scope, or an OAuth refresh forcing an hourly prompt-cache miss | not found |
@@ -23,7 +24,7 @@ The Agent Skills entry is subtle. **Multi-vendor adoption itself is well-support
 
 The progressive-disclosure entry is the one most likely to trip you up, because the *concept* of progressive disclosure in skills is real and widely discussed. What the specification does **not** do is mandate those particular token and line budgets. Describe the behaviour, don't quote numbers.
 
-The caching-price entries need care. What failed was the **vendor-blog sourcing**: reviewers could not confirm those figures from the blogs cited. The current official Anthropic docs, fetched 2026-09-25, do show cache reads at roughly a 90% discount. Quote the provider's own pricing page with its date, never a third-party summary. [cost-and-caching.md](../questions/cost-and-caching.md) does this.
+The caching-price entries need care. What failed was the **vendor-blog sourcing**: reviewers could not confirm the "50% off" automatic-discount claim or the ~1.4-reads-per-write break-even from the blogs cited. Two adjacent figures survive: Anthropic's 0.1× cache-read discount and OpenAI's 1,024-token minimum are both confirmed on the official docs, fetched 2026-09-25, which are authoritative here. Quote the provider's own pricing page with its date, never a third-party summary. [cost-and-caching.md](../questions/cost-and-caching.md) does this.
 
 The Claude Code changelog entries were supplied as leads and not found on inspection. The only related entry (2.1.282) fixes the opposite behaviour: Bash rules with a mid-pattern `:*` were being skipped.
 

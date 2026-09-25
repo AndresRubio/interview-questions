@@ -2,7 +2,7 @@
 
 **Defensive design, not attack craft.** This file is about how you build an LLM application or agent so a manipulated model can't do much damage. It stays at the architecture level and contains no working attack payloads.
 
-It sits next to three other files. [agent-protocols.md](agent-protocols.md) covers MCP-specific security: token passthrough, the confused-deputy proxy attack, and the *Parasites in the Toolchain* survey of MCP servers (Q4–Q6). This file doesn't repeat any of that. [agent-architecture.md](agent-architecture.md) covers how agents are structured, and [retrieval-and-rag.md](retrieval-and-rag.md) covers the retrieval pipeline that poisoning targets.
+It sits next to three other files. [agent-protocols.md](agent-protocols.md) covers MCP-specific security: token passthrough and the confused-deputy proxy attack (questions 4-5), and the *Parasites in the Toolchain* survey of MCP servers (question 6). This file doesn't repeat any of that. [agent-architecture.md](agent-architecture.md) covers how agents are structured, and [retrieval-and-rag.md](retrieval-and-rag.md) covers the retrieval pipeline that poisoning targets.
 
 The framing interviewers reward: **prompt injection is an architecture problem, not a prompt problem.** Candidates who answer with "a better system prompt" or "add a classifier" are describing mitigations, not controls.
 
@@ -54,7 +54,7 @@ The trade-off to say out loud: **layers 2, 3 and 5 reduce how *often* attacks su
 
 ### 3. Explain the "lethal trifecta." How does it change how you review an agent design?
 
-`single-source` — Simon Willison
+`single-source`
 
 <details>
 <summary>Answer</summary>
@@ -79,7 +79,7 @@ Senior point: **a "read-only" agent with a markdown renderer is not read-only.**
 
 ### 4. Walk through the OWASP Top 10 for LLM Applications. Which items are really about architecture?
 
-`single-source` — OWASP GenAI
+`single-source`
 
 <details>
 <summary>Answer</summary>
@@ -111,12 +111,12 @@ The 2025 list ([genai.owasp.org](https://genai.owasp.org/llm-top-10/)):
 
 ### 5. What design patterns give *provable* resistance to injection, and what do they cost?
 
-`single-source` — primary papers
+`single-source`
 
 <details>
 <summary>Answer</summary>
 
-The principle, from **Beurer-Kellner et al., *Design Patterns for Securing LLM Agents against Prompt Injections*** (IBM, Invariant Labs, ETH Zurich, Google, Microsoft; arXiv [2506.08837](https://arxiv.org/abs/2506.08837), June 2025): once an agent has read untrusted input, it must be constrained so that input *cannot* trigger consequential actions.
+The principle, from **Beurer-Kellner et al., *Design Patterns for Securing LLM Agents against Prompt Injections*** (arXiv [2506.08837](https://arxiv.org/abs/2506.08837), June 2025, authors from institutions including IBM, Invariant Labs, ETH Zurich, Google, Microsoft): once an agent has read untrusted input, it must be constrained so that input *cannot* trigger consequential actions.
 
 The six patterns, roughly from most to least restrictive:
 
@@ -137,7 +137,9 @@ The six patterns, roughly from most to least restrictive:
 
 ### 6. How do you design tools and credentials for least privilege in an agent?
 
-`single-source` — vendor docs, cross-checked against the OWASP LLM06 framing
+See also [agent-architecture.md question 5](agent-architecture.md#5-whats-your-credential-hygiene-for-an-agent-that-touches-real-systems) for the harness-level version of this question.
+
+`single-source`
 
 <details>
 <summary>Answer</summary>
@@ -151,7 +153,7 @@ The six patterns, roughly from most to least restrictive:
 **Credential scoping:**
 
 - **Separate what the agent owns from what the user owns.** LangSmith's [Connections](https://www.langchain.com/blog/connections-managed-credentials-and-per-caller-identity-for-managed-deep-agents) makes this explicit. An *agent-owned* credential belongs to the deployment and every caller shares it (fine for web search or a pricing feed). A *user-owned* credential resolves per caller at run time, so a GitHub issue is opened *by the person who asked*, not by a service account. Per-caller identity is what gives you an audit trail and stops one user from acting through the agent with another user's access.
-- Short-lived, scoped tokens; never forward the user's token to a downstream service. That's the MCP token-passthrough rule, see [agent-protocols.md](agent-protocols.md) Q4.
+- Short-lived, scoped tokens; never forward the user's token to a downstream service. That's the MCP token-passthrough rule, see [agent-protocols.md question 4](agent-protocols.md#4-why-is-token-passthrough-forbidden-in-mcp-and-what-must-a-server-do-instead).
 - **Keep an inventory of what can execute or reach the network.** You can't scope what you haven't listed. [geiger-scan](https://github.com/Atomburstofficial/geiger) is one read-only example: it lists agents, MCP servers, plugins and extensions on a machine and labels each with capabilities such as `[EXECUTES]`, `[HOLDS-SECRETS]` and `[BROAD-FILESYSTEM]`, and it has a `--diff` mode to catch drift.
 
 </details>
@@ -160,7 +162,7 @@ The six patterns, roughly from most to least restrictive:
 
 ### 7. When do you require a human in the loop, and how do you stop the approval step itself from being attacked?
 
-`single-source` — Meta, via The Batch
+`single-source`
 
 <details>
 <summary>Answer</summary>
@@ -176,7 +178,7 @@ The most complete published example is Meta's harness for its Muse agent, as rep
 - Each approval is **bound to one connector or destination and one purpose**. Purchases and emails always require confirmation.
 - Underneath that: data from outside sources is labeled untrusted when it enters context, and a separately trained classifier ensemble runs outside the agent's runtime.
 
-**The senior caveat:** Meta evaluated injection resistance on an unpublished dataset and published no classifier accuracy. It offers a bug bounty (up to $300,000) instead. The architecture is well designed but has no public measurement. Say which of those two you'd rely on.
+**The senior caveat:** Meta evaluated injection resistance on an unpublished dataset and published no classifier accuracy. It offers a bug bounty instead: **$130,000 for a successful prompt injection**, with $300,000 as the overall maximum payout for a valid report, not the injection-specific figure. The architecture is well designed but has no public measurement. Say which of those two you'd rely on.
 
 </details>
 

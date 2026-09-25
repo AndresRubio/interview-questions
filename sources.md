@@ -62,7 +62,7 @@ Quality grading reflects the source type, not agreement with it.
 | [Simon Willison — The lethal trifecta](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/) and [markdown exfiltration](https://simonwillison.net/tags/markdown-exfiltration/) | Injection threat model, exfiltration channel |
 | [Simon Willison newsletter, Sep 2026](https://simonw.substack.com/p/navierstokes-rubygems-attacked-gis) | Compaction losing code; OpenRouter deployment variance |
 | [Spotify — Portal](https://engineering.atspotify.com/2026/9/portal-by-spotify-cut-my-claude-code-token-usage-by-90) | Routing bulk reads to a cheap model (first-party claim) |
-| [Cognition — Local Fusion](https://cognition.com/blog/local-fusion) | Lead/executor routing (vendor claim) |
+| [Devin Fusion (Cognition)](https://cognition.com/blog/local-fusion) | Lead/executor routing (vendor claim) |
 | [Google — agents challenge patterns](https://developers.googleblog.com/en/4-engineering-patterns-behind-the-strongest-ai-agents-challenge-submissions/) | Tiered routing, zero-token regex tier |
 | [A cache hit is not proof](https://siddhantkhare.com/writing/kv-cache-truth-auditor) | Verifying cache-hit claims |
 | [AWS Strands Harness](https://strandsagents.com/blog/introducing-strands-harness/) | Truncation and compaction trigger (vendor) |

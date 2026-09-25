@@ -2,8 +2,6 @@
 
 LoRA, QLoRA, preference optimization, and the build-vs-buy question of fine-tuning against a base model versus retrieving context at inference time. This sits next to [retrieval-and-rag.md](retrieval-and-rag.md) — question 6 here is the other half of that decision — and next to [model-evaluation.md](model-evaluation.md), since a botched fine-tune is one of the perplexity blow-ups that file's question 4 is watching for. It's a different layer from [uncertainty-quantification.md](uncertainty-quantification.md): that file asks whether a single response can be trusted at inference time; this one asks how the weights got the way they are.
 
-Sourcing note: the question list below matches what current (2025-2026) prep guides converge on independently — none of them ties a question to a named company, so treat these as the commonly asked set, not confirmed transcripts from a specific employer.
-
 ---
 
 ### 1. Explain LoRA. What do rank and alpha actually control?
