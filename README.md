@@ -11,7 +11,7 @@ The field moves fast enough that confidently repeating a stale fact is a real in
 Each question hides its answer behind a collapsible block. Read the question, answer it out loud, *then* expand. Reading answers you haven't attempted feels productive and teaches almost nothing.
 
 ```
-questions/    — 48 questions with answers, grouped by topic
+questions/    — 78 questions with answers, grouped by topic
 reference/    — cheat sheets for the things that changed recently
 sources.md    — every source, with its quality grading
 ```
@@ -40,6 +40,10 @@ Not everything here is equally certain, and the notes say so.
 | [Senior and behavioural](questions/senior-and-behavioural.md) | 4 | The rounds where most candidates actually fail. |
 | [Model evaluation](questions/model-evaluation.md) | 7 | Perplexity, bits per byte, quantization damage, contamination. |
 | [Uncertainty quantification](questions/uncertainty-quantification.md) | 6 | Runtime confidence: semantic entropy, calibration, selective answering. |
+| [Post-training](questions/post-training.md) | 7 | LoRA, QLoRA, SFT vs RLHF vs DPO, forgetting, distillation for agents. |
+| [Context engineering](questions/context-engineering.md) | 8 | Context rot, compaction, agent memory, structured outputs. |
+| [Cost and caching](questions/cost-and-caching.md) | 7 | Prompt vs semantic caching, routing, cost attribution. |
+| [LLM security](questions/llm-security.md) | 8 | Prompt injection, the lethal trifecta, least-privilege agents. |
 | [Interview process](questions/interview-process.md) | 3 | Loop shape, and whether you may use AI in it. |
 
 ## Reference
