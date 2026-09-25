@@ -2,7 +2,7 @@
 
 Intrinsic metrics — perplexity, cross-entropy, bits per byte — and the benchmark hygiene around them.
 
-**This is a different layer from [evaluation.md](evaluation.md).** That file covers *application* evaluation: does your RAG system answer correctly, is your judge validated. This one covers *model* evaluation: how good is the language model at modelling language. Conflating the two is itself a common interview mistake.
+**This is a different layer from [evaluation.md](evaluation.md).** That file covers *application* evaluation: does your RAG system answer correctly, is your judge validated. This one covers *model* evaluation: how good is the language model at modelling language. A third layer — runtime confidence on a single response — is in [uncertainty-quantification.md](uncertainty-quantification.md). Conflating them is itself a common interview mistake.
 
 All `foundational` — established material, not output of the verification pipeline used elsewhere in this repo.
 

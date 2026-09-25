@@ -11,7 +11,7 @@ The field moves fast enough that confidently repeating a stale fact is a real in
 Each question hides its answer behind a collapsible block. Read the question, answer it out loud, *then* expand. Reading answers you haven't attempted feels productive and teaches almost nothing.
 
 ```
-questions/    — 42 questions with answers, grouped by topic
+questions/    — 48 questions with answers, grouped by topic
 reference/    — cheat sheets for the things that changed recently
 sources.md    — every source, with its quality grading
 ```
@@ -39,6 +39,7 @@ Not everything here is equally certain, and the notes say so.
 | [Inference and systems](questions/inference-and-systems.md) | 4 | Serving, cost arithmetic, observability. |
 | [Senior and behavioural](questions/senior-and-behavioural.md) | 4 | The rounds where most candidates actually fail. |
 | [Model evaluation](questions/model-evaluation.md) | 7 | Perplexity, bits per byte, quantization damage, contamination. |
+| [Uncertainty quantification](questions/uncertainty-quantification.md) | 6 | Runtime confidence: semantic entropy, calibration, selective answering. |
 | [Interview process](questions/interview-process.md) | 3 | Loop shape, and whether you may use AI in it. |
 
 ## Reference

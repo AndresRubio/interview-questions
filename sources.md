@@ -26,6 +26,8 @@ Quality grading reflects the source type, not agreement with it.
 | [GraphRAG-Bench](https://arxiv.org/abs/2506.02404) | Preprint |
 | [RAGSearch](https://arxiv.org/abs/2604.09666) — agentic retrieval vs GraphRAG | Preprint, Apr 2026 |
 | [LLM-as-judge measurement critique](https://arxiv.org/abs/2508.18076) | Position paper |
+| [Semantic Uncertainty](https://arxiv.org/abs/2302.09664) — Kuhn, Gal & Farquhar | ICLR 2023 |
+| [Detecting hallucinations using semantic entropy](https://www.nature.com/articles/s41586-024-07421-0) — Farquhar, Kossen, Kuhn & Gal | Nature 2024 |
 
 ## Practitioner and civic-tech
 
@@ -33,6 +35,7 @@ Quality grading reflects the source type, not agreement with it.
 |---|---|
 | [hamel.dev evals FAQ](https://hamel.dev/blog/posts/evals-faq/) | Judge validation, error analysis budget |
 | [Simon Willison — Designing Agentic Loops](https://simonw.substack.com/p/designing-agentic-loops) | Agent definition, credential hygiene |
+| [cvs-health/uqlm](https://github.com/cvs-health/uqlm) | UQ scorer taxonomy, black-box vs white-box split. Apache 2.0. Fetched 2026-09-25; repo states no benchmark results. |
 | [interviewing.io — Anthropic questions](https://interviewing.io/anthropic-interview-questions) | Loop structure, values round |
 | [Uncharted Career — AI interview policies](https://unchartedcareer.com/research/ai-interview-policies) | Per-company AI-use policy tracker, 6 Aug 2026. Vendor aggregation, not independent research. |
 
