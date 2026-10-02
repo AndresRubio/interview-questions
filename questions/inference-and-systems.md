@@ -101,7 +101,7 @@ The framing that lands: **prompt changes are code changes and need the same gate
 
 ---
 
-### 5. You're asked to self-host Llama-3-70B for 32 concurrent users at 8K context. How many GPUs?
+### 5. You're asked to self-host Llama-3.1-70B for 32 concurrent users at 8K context. How many GPUs?
 
 `single-source`
 
@@ -112,7 +112,7 @@ Size **two** things, not one. The mistake is sizing for the weights and then run
 
 **Weights** = parameters × bytes per parameter. That's 2 bytes at FP16/BF16, 1 at FP8/INT8, and about 0.5 at 4-bit (AWQ/GPTQ). So 70B is ~140 GB at FP16, ~70 GB at FP8 and ~35 GB at INT4.
 
-**KV cache per token** = `2 (K and V) × layers × KV heads × head dim × bytes`. Llama-3.1-70B's config has 80 layers and 8 KV heads (grouped-query attention, against 64 query heads), with head dim 8192 / 64 = 128:
+**KV cache per token** = `2 (K and V) × layers × KV heads × head dim × bytes`. Llama-3.1-70B's config has 80 layers and 8 KV heads (grouped-query attention, against 64 query heads), with head dim derived as hidden size 8192 / 64 heads = 128:
 
 ```
 2 × 80 × 8 × 128 × 2 bytes = 327,680 bytes ≈ 0.33 MB per token
@@ -120,10 +120,12 @@ Size **two** things, not one. The mistake is sizing for the weights and then run
 262,144 × 0.33 MB        ≈ 86 GB of KV cache
 ```
 
-That's roughly the size of the FP8 weights again. FP8 weights plus a full cache come to ~156 GB, before activation and runtime overhead. That's more than one H200 (141 GB) and more than two 80 GB H100s once you add headroom. Your options:
+That's roughly the size of the FP8 weights again. Watch the units: GPU memory is quoted in GiB, so 86 GB of cache is 80 GiB, and the ~70.6B parameters at FP8 are ~66 GiB. Together that's ~146 GiB before activations and runtime overhead. That doesn't fit one H200 (141 GB), and it fills two 80 GB H100s (160 GiB) with almost no headroom. Your options:
 - Quantize the KV cache too.
 - Accept fewer concurrent full-length contexts. Paged attention only allocates what a request actually uses (PagedAttention, Kwon et al., arXiv 2309.06180).
 - Add a GPU.
+
+**The number to give:** two H100s is on the edge. Two H200s, or three H100s, is the safe answer, unless you shrink the cache.
 
 The senior move is saying the cache number out loud before anyone asks. GQA is the reason it's 86 GB and not 690 GB, because full multi-head attention would cache all 64 heads.
 
@@ -145,11 +147,11 @@ The two phases have different bottlenecks:
 - **Prefill** (processing the prompt) handles all prompt tokens in parallel. It is **compute-bound**.
 - **Decode** (one token at a time) has to read every weight from memory for each token. It is **memory-bandwidth-bound**.
 
-That gives a back-of-envelope ceiling for a single stream: `tokens/s ≤ memory bandwidth / bytes of weights`. An H100 SXM has 3.35 TB/s (NVIDIA spec), so a 70 GB FP8 model tops out around **48 tokens/s for one user**, however many FLOPs sit idle. This is an upper bound; real numbers come in lower.
+That gives a back-of-envelope ceiling for a single stream: `tokens/s ≤ memory bandwidth / bytes of weights`. An H100 SXM has 3.35 TB/s (NVIDIA spec), so a 70 GB FP8 model tops out around **48 tokens/s for one user**, however many FLOPs sit idle. This is an upper bound; real numbers come in lower. The PagedAttention paper makes the same point from the serving side: throughput depends on batching, and the KV cache is what limits the batch (Kwon et al., arXiv 2309.06180).
 
-The fix is **batching**. One read of the weights serves every sequence in the batch, so aggregate throughput rises almost linearly with batch size. That holds until you either become compute-bound or run out of KV cache memory, which ties this back to [question 5](#5-youre-asked-to-self-host-llama-3-70b-for-32-concurrent-users-at-8k-context-how-many-gpus). Continuous batching and paged KV caches in vLLM, SGLang and TensorRT-LLM exist to keep that batch full.
+The fix is **batching**. One read of the weights serves every sequence in the batch, so aggregate throughput rises almost linearly with batch size. That holds until you either become compute-bound or run out of KV cache memory, which ties this back to [question 5](#5-youre-asked-to-self-host-llama-31-70b-for-32-concurrent-users-at-8k-context-how-many-gpus). [Question 3](#3-which-inference-optimisations-would-you-reach-for-and-what-does-each-cost-you) tables these optimisations; this is the mechanism behind them. Continuous batching and paged KV caches in vLLM, SGLang and TensorRT-LLM exist to keep that batch full.
 
-**Speculative decoding** attacks the same bottleneck from a different side. A small draft model proposes several tokens, and the large model verifies them in one pass. The original paper reports 2–3× speedups on T5-XXL with **identical outputs** (Leviathan, Kalman & Matias, arXiv 2211.17192). The gain depends on how often the draft model is accepted, so measure it on your traffic.
+**Speculative decoding** attacks the same bottleneck from a different side. A small draft model proposes several tokens, and the large model verifies them in one pass. The original paper reports 2–3× speedups on T5-XXL with **identical outputs** — the same output distribution, not an approximation (Leviathan, Kalman & Matias, arXiv 2211.17192). The gain depends on how often the draft model is accepted, so measure it on your traffic.
 
 The trade-off interviewers want named: **a strict latency SLA forces smaller batches, which raises cost per token.** Throughput and per-user latency pull against each other, and the SLA picks the point.
 
@@ -159,7 +161,7 @@ The trade-off interviewers want named: **a strict latency SLA forces smaller bat
 
 ### 7. Turn a GPU bill into a cost per million tokens. What dominates it?
 
-`single-source`
+`foundational`
 
 <details>
 <summary>Answer</summary>
@@ -190,14 +192,14 @@ For the token-side cost levers on APIs, see [cost-and-caching.md](cost-and-cachi
 
 ### 8. Self-host or use an API? Give a decision rule, not a vibe.
 
-`single-source`
+`foundational`
 
 <details>
 <summary>Answer</summary>
 
-1. Estimate monthly tokens, **input and output separately**, and peak concurrency. Output is usually priced several times higher than input on APIs, and reasoning models produce a lot of it.
+1. Estimate monthly tokens, **input and output separately**, and peak concurrency. Output is priced above input on APIs (see the illustrative prices in [question 2](#2-do-the-cost-arithmetic-out-loud-50000-daily-users-an-agent-averaging-12-llm-calls-per-session-4k-input-and-500-output-tokens-per-call)), and reasoning models produce a lot of it.
 2. Price that on the API.
-3. Price the self-hosted version at a **realistic** utilization, not 100%. Include redundancy, and size the GPUs with the KV cache arithmetic from [question 5](#5-youre-asked-to-self-host-llama-3-70b-for-32-concurrent-users-at-8k-context-how-many-gpus).
+3. Price the self-hosted version at a **realistic** utilization, not 100%. Include redundancy, and size the GPUs with the KV cache arithmetic from [question 5](#5-youre-asked-to-self-host-llama-31-70b-for-32-concurrent-users-at-8k-context-how-many-gpus).
 4. Add engineering time.
 
 Self-hosting usually wins only with **steady, high volume**, or when something other than price decides it: data that can't leave your boundary, a fine-tuned or custom model, or latency control an API won't give you. Low, spiky or uncertain volume favours APIs, because they turn utilization risk into someone else's problem.

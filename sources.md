@@ -25,7 +25,7 @@ Quality grading reflects the source type, not agreement with it.
 | Vision docs: [Anthropic](https://platform.claude.com/docs/en/build-with-claude/vision), [OpenAI](https://developers.openai.com/api/docs/guides/images-vision), Gemini [tokens](https://ai.google.dev/gemini-api/docs/tokens), [video](https://ai.google.dev/gemini-api/docs/video-understanding), [media resolution](https://ai.google.dev/gemini-api/docs/media-resolution) | Image/video/audio token accounting. Fetched 2026-09-25. |
 | [OpenAI Terms of Use](https://openai.com/policies/terms-of-use) | Restriction on using Output to develop competing models. Accessed 2026-09-25. |
 | NVIDIA [H100](https://www.nvidia.com/en-us/data-center/h100/) and [H200](https://www.nvidia.com/en-us/data-center/h200/) specs | Memory capacity and bandwidth. Fetched 2026-10-03. |
-| [Llama-3.1-70B config](https://huggingface.co/unsloth/Meta-Llama-3.1-70B/blob/main/config.json) | Layers, KV heads, head dim for KV-cache arithmetic |
+| [Llama-3.1-70B config](https://huggingface.co/unsloth/Meta-Llama-3.1-70B/blob/main/config.json) | Layers, KV heads, hidden size for KV-cache arithmetic. Ungated mirror of the gated meta-llama repo. Fetched 2026-10-03. |
 | [Linux Foundation press](https://www.linuxfoundation.org/press) | A2A governance, membership (promotional on adoption) |
 
 ## Peer-reviewed and preprints

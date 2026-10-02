@@ -36,7 +36,7 @@ Not everything here is equally certain, and the notes say so.
 | [Agent architecture](questions/agent-architecture.md) | 6 | Loops, harnesses, why benchmarks lie. |
 | [Retrieval and RAG](questions/retrieval-and-rag.md) | 5 | Where the received wisdom is wrong. |
 | [Evaluation](questions/evaluation.md) | 4 | Reported as the largest skill gap in the candidate pool. |
-| [Inference and systems](questions/inference-and-systems.md) | 8 | Serving, cost arithmetic, observability. |
+| [Inference and systems](questions/inference-and-systems.md) | 8 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API. |
 | [Senior and behavioural](questions/senior-and-behavioural.md) | 4 | The rounds where most candidates actually fail. |
 | [Model evaluation](questions/model-evaluation.md) | 7 | Perplexity, bits per byte, quantization damage, contamination. |
 | [Uncertainty quantification](questions/uncertainty-quantification.md) | 6 | Runtime confidence: semantic entropy, calibration, selective answering. |

@@ -1,6 +1,6 @@
 # Cost and caching
 
-The cost-arithmetic exercise — do the token math for a 50K-user agent workload out loud — already lives in [inference-and-systems.md](inference-and-systems.md#2-do-the-cost-arithmetic-out-loud-50000-daily-users-an-agent-averaging-12-llm-calls-per-session-4k-input-and-500-output-tokens-per-call), along with the optimisation trade-off table. This file picks up where that one stops: the two caching mechanisms an interviewer expects you to tell apart, how to design a cache for a real chatbot, why the same context window can be cache-friendly or cache-hostile depending on how you write it, when routing beats caching, and how teams actually verify the savings they claim.
+The cost-arithmetic exercise — do the token math for a 50K-user agent workload out loud — already lives in [inference-and-systems.md](inference-and-systems.md#2-do-the-cost-arithmetic-out-loud-50000-daily-users-an-agent-averaging-12-llm-calls-per-session-4k-input-and-500-output-tokens-per-call), along with the optimisation trade-off table and the self-hosted GPU economics (questions 5–8). This file picks up where that one stops: the two caching mechanisms an interviewer expects you to tell apart, how to design a cache for a real chatbot, why the same context window can be cache-friendly or cache-hostile depending on how you write it, when routing beats caching, and how teams actually verify the savings they claim.
 
 ---
 

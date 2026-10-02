@@ -8,7 +8,7 @@
 | [agent-architecture.md](agent-architecture.md) | 6 | Loops, harnesses, benchmark fragility. |
 | [retrieval-and-rag.md](retrieval-and-rag.md) | 5 | Where received wisdom fails controlled benchmarks. |
 | [evaluation.md](evaluation.md) | 4 | Judge validation, biases, time budget. |
-| [inference-and-systems.md](inference-and-systems.md) | 8 | Serving, cost arithmetic, observability. GPU sizing, KV cache, self-host vs API. |
+| [inference-and-systems.md](inference-and-systems.md) | 8 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API. |
 | [senior-and-behavioural.md](senior-and-behavioural.md) | 4 | Coding agents, decisions, the values round. |
 | [model-evaluation.md](model-evaluation.md) | 7 | Perplexity, BPB, quantization damage, contamination. |
 | [uncertainty-quantification.md](uncertainty-quantification.md) | 6 | Semantic entropy, calibration, selective answering. |
