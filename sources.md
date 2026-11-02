@@ -31,6 +31,9 @@ Quality grading reflects the source type, not agreement with it.
 | [nginx ngx_http_proxy_module](https://nginx.org/en/docs/http/ngx_http_proxy_module.html) | `proxy_buffering` default, `X-Accel-Buffering`, `proxy_read_timeout` 60s. Fetched 2026-11-02. |
 | [Anthropic streaming docs](https://platform.claude.com/docs/en/build-with-claude/streaming) and [API errors](https://platform.claude.com/docs/en/api/errors) | `ping` and `error` events, `overloaded_error`/529, partial tool_use JSON, resume rules for Claude 4.5 vs 4.6. Fetched 2026-11-02. |
 | [OpenAI streaming guide](https://developers.openai.com/api/docs/guides/streaming-responses) | `error` event type; silent on disconnect billing. Fetched 2026-11-02. |
+| [Anthropic — Reducing latency](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-latency) | Lever order (model, prompt and output length, streaming); Haiku 5.5 with effort for speed-critical apps. Fetched 2026-11-02. |
+| [TRL SFTTrainer docs](https://huggingface.co/docs/trl/sft_trainer) (v1.17.1) | `completion_only_loss`, `assistant_only_loss` and `{% generation %}` markers, ≈1e-4 adapter LR vs 2e-5 default, 3 epochs default, `eos_token` alignment. Fetched 2026-11-02. |
+| [PEFT LoRA developer guide](https://huggingface.co/docs/peft/developer_guides/lora) | `r=8`, `lora_alpha=8` defaults, query/value default targets, `target_modules="all-linear"`. Fetched 2026-11-02. |
 | [Anthropic strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use) and [OpenAI function calling](https://developers.openai.com/api/docs/guides/function-calling) | `strict: true`, schema subset limits. Fetched 2026-11-02. |
 
 ## Peer-reviewed and preprints
@@ -81,6 +84,8 @@ Quality grading reflects the source type, not agreement with it.
 | [GPT-3](https://arxiv.org/abs/2005.14165) — Brown et al. | NeurIPS 2020 |
 | [Speculative decoding](https://arxiv.org/abs/2211.17192) — Leviathan, Kalman & Matias | ICML 2023 |
 | [PagedAttention / vLLM](https://arxiv.org/abs/2309.06180) — Kwon et al. | SOSP 2023 |
+| [DistServe](https://arxiv.org/abs/2401.09670) — Zhong et al., prefill/decode disaggregation | OSDI 2024. Abstract fetched 2026-11-02 (7.4x requests, 12.6x tighter SLO, >90% within latency limits). |
+| [Sarathi-Serve](https://arxiv.org/abs/2403.02310) — Agrawal et al., chunked prefill | OSDI 2024. Abstract fetched 2026-11-02 (2.6x capacity for Mistral-7B on one A100 vs vLLM). |
 
 ## Practitioner and civic-tech
 
@@ -97,6 +102,7 @@ Quality grading reflects the source type, not agreement with it.
 | [Simon Willison newsletter, Sep 2026](https://simonw.substack.com/p/navierstokes-rubygems-attacked-gis) | Compaction losing code; OpenRouter deployment variance |
 | [Spotify — Portal](https://engineering.atspotify.com/2026/9/portal-by-spotify-cut-my-claude-code-token-usage-by-90) | Routing bulk reads to a cheap model (first-party claim) |
 | [Devin Fusion (Cognition)](https://cognition.com/blog/local-fusion) | Lead/executor routing (vendor claim) |
+| [Thinking Machines — LoRA Without Regret](https://thinkingmachines.ai/blog/lora/) | ~10x LoRA LR (9.8 fit over 14 Llama/Qwen models), attention-only underperforms, alpha=32, LR shift <2x from rank 4 to 512, batch-size sensitivity. Vendor research blog. Fetched 2026-11-02. |
 | [Google — agents challenge patterns](https://developers.googleblog.com/en/4-engineering-patterns-behind-the-strongest-ai-agents-challenge-submissions/) | Tiered routing, zero-token regex tier |
 | [A cache hit is not proof](https://siddhantkhare.com/writing/kv-cache-truth-auditor) | Verifying cache-hit claims |
 | [AWS Strands Harness](https://strandsagents.com/blog/introducing-strands-harness/) | Truncation and compaction trigger (vendor) |

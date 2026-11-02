@@ -1,6 +1,6 @@
 # Questions
 
-114 questions across sixteen topics. Each answer sits behind a collapsible block. Answer out loud first, then expand.
+116 questions across sixteen topics. Each answer sits behind a collapsible block. Answer out loud first, then expand.
 
 | File | Questions | Focus |
 |---|---|---|
@@ -8,11 +8,11 @@
 | [agent-architecture.md](agent-architecture.md) | 8 | Loops, harnesses, benchmark fragility, tool reliability, stuck loops. |
 | [retrieval-and-rag.md](retrieval-and-rag.md) | 9 | Where received wisdom fails controlled benchmarks. RAG design, debugging, hybrid search, rerankers. |
 | [evaluation.md](evaluation.md) | 5 | Judge validation, biases, time budget, a support-bot eval suite. |
-| [inference-and-systems.md](inference-and-systems.md) | 9 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API, SSE streaming. |
+| [inference-and-systems.md](inference-and-systems.md) | 10 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API, SSE streaming, first-token latency. |
 | [senior-and-behavioural.md](senior-and-behavioural.md) | 4 | Coding agents, decisions, the values round. |
 | [model-evaluation.md](model-evaluation.md) | 7 | Perplexity, BPB, quantization damage, contamination. |
 | [uncertainty-quantification.md](uncertainty-quantification.md) | 6 | Semantic entropy, calibration, selective answering. |
-| [post-training.md](post-training.md) | 7 | LoRA/QLoRA, preference optimisation, forgetting, agent distillation. |
+| [post-training.md](post-training.md) | 8 | LoRA/QLoRA, preference optimisation, forgetting, agent distillation. |
 | [context-engineering.md](context-engineering.md) | 8 | Context rot, compaction, memory, structured outputs. |
 | [cost-and-caching.md](cost-and-caching.md) | 7 | Prompt vs semantic caching, routing, spend attribution. Pricing from docs fetched 2026-09-25. |
 | [llm-security.md](llm-security.md) | 9 | Injection, lethal trifecta, OWASP 2025, CaMeL, least privilege, PII redaction. |

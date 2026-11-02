@@ -247,3 +247,49 @@ A common middle ground is to keep going through short disconnects (a grace perio
 **SSE or WebSockets?** For token streaming, SSE is usually the better default. It's plain HTTP, it goes through most proxies once buffering is off, and reconnection with a last id is in the spec. The traffic is one-way anyway, since the user's next message can be a normal POST. Reach for WebSockets when you need real two-way traffic on one connection: voice, collaborative editing, or interrupting the model mid-generation at low latency. You then build your own reconnect, resume and heartbeat logic, and some corporate proxies handle WebSocket upgrades badly.
 
 </details>
+
+---
+
+### 10. Cut first-token latency for a chat app.
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+Start by finding out where the time goes, because time to first token (TTFT) is a sum of several waits and only one of them is the model. A user's TTFT is roughly:
+
+```
+TTFT = network + TLS handshake
+     + your gateway (auth, rate limits, moderation)
+     + work before generation (retrieval, tool calls, history loading)
+     + queueing at the provider or your inference server
+     + prefill (processing the prompt)
+     + time to the first visible token (thinking, if the model reasons first)
+```
+
+Instrument each segment as a span (see [question 4](#4-how-do-you-make-a-genai-system-observable-in-production)) before changing anything. In many chat apps the biggest term turns out to be the app's own pre-generation work, which no model change will fix.
+
+**Measure from both ends, at p50 and p95.** Server-side spans tell you which segment is slow. The client measurement, from the user pressing send to the first rendered token, tells you what the user actually feels, and it includes things the server never sees: DNS, TLS, mobile networks and proxy buffering. Watch p95 as well as p50. Queueing and retrieval tend to hide in the tail, and a median that looks fine can sit beside a p95 users complain about. Split the numbers by prompt length and by cache hit or miss, or a mix shift will look like a regression.
+
+**Then the levers, roughly cheapest first.**
+
+- Do less before generation. Run independent retrieval and tool calls in parallel, not one after another. Skip retrieval when a cheap check says the turn doesn't need it ("thanks", a follow-up on the previous answer). Shorter prompts also mean less prefill. The trade-off is quality: a skipped retrieval that was needed gives a confident wrong answer, so evaluate the skip rule.
+- Cache the prefix. Prompt caching lets the provider skip prefill on a stable prefix, which helps TTFT as well as cost. The layout rules and the ways teams break their own cache are in [cost-and-caching.md question 3](cost-and-caching.md#3-what-makes-a-prompt-cache-friendly-and-how-do-people-accidentally-defeat-their-own-cache).
+- Use a smaller or faster model, or route. Anthropic's latency guide (fetched 2026-11-02) puts choosing the model first among its levers and points speed-critical apps at its fastest tier, with effort as the control. Routing easy turns to the small model keeps quality where it matters; routing has its own trade-offs, covered in [cost-and-caching.md question 4](cost-and-caching.md#4-when-do-you-reach-for-model-routing-or-cascades-instead-of-or-alongside-caching).
+- Cut network time. Call the provider region nearest your servers, keep HTTP connections alive and pooled so you don't pay a TLS handshake per request, and terminate the user's connection close to them.
+- Stream. Streaming doesn't make the model faster, but it puts the first token on screen as soon as it exists instead of after the whole answer. Why that counts as a latency win is in [cost-and-caching.md question 6](cost-and-caching.md#6-streaming-doesnt-reduce-total-cost-or-total-latency-why-do-teams-treat-it-as-a-latency-win-anyway), and making it survive proxies is [question 9](#9-stream-responses-over-sse-and-handle-disconnects).
+
+**Reasoning models move the goalposts.** With extended thinking on, the model produces thinking tokens before the answer, so the first *visible* token can arrive long after the first generated one. Lower the effort or thinking budget for chat turns that don't need it, route those turns to a non-reasoning setting, or show the thinking stream (or a status line) so the wait isn't a blank screen. Measure the time to first answer token separately from TTFT.
+
+**If you self-host, the server has its own levers.** Long prefills from new requests stall the decodes of everyone already streaming, and queued requests wait behind them. Three techniques address that:
+
+- Chunked prefill splits a long prompt into chunks and mixes them into batches with ongoing decodes, so new requests don't freeze everyone else. Sarathi-Serve reports up to 2.6x higher serving capacity than vLLM for Mistral-7B on one A100 under tail-latency constraints (Agrawal et al., arXiv 2403.02310).
+- Prefix caching keeps the KV cache for shared prefixes (system prompt, tool definitions) so repeated prefill is skipped. It's the self-hosted version of provider prompt caching.
+- Prefill/decode disaggregation runs the two phases on separate GPUs so they stop interfering, and tunes each for its own target (TTFT for prefill, time per output token for decode). DistServe reports up to 7.4x more requests served, or a 12.6x tighter SLO, while keeping over 90% of requests within latency limits (Zhong et al., arXiv 2401.09670). The cost is moving the KV cache between GPUs, which needs fast interconnect.
+
+These are paper results on the authors' setups, so treat them as direction and benchmark on your own traffic. The trade-off underneath all of them is the one from [question 6](#6-why-is-single-user-decode-so-slow-on-a-gpu-that-costs-this-much-and-what-fixes-it): bigger batches lower cost and raise queueing, so a TTFT target at p95 limits how hard you can batch.
+
+I'd answer in that order: measure, remove pre-generation work, cache, then pick the model, and only then touch serving internals. Sources: Anthropic "Reducing latency" docs; arXiv 2401.09670 and 2403.02310 abstracts, all fetched 2026-11-02.
+
+</details>
