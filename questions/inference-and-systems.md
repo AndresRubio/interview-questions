@@ -207,3 +207,43 @@ Self-hosting usually wins only with **steady, high volume**, or when something o
 The senior addition is to **evaluate quantization on your own task before pricing it in.** FP8 halving memory is the reason the numbers in question 5 work, but "nearly lossless" is a claim to test, not assume. See [model-evaluation.md](model-evaluation.md) for how quantization damage hides behind headline averages.
 
 </details>
+
+---
+
+### 9. Stream responses over SSE and handle disconnects.
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+Treat the stream as a delivery channel for a message your server owns. Generation and storage live on the server, and the browser connection is one viewer of it that can drop and come back. Most of the design follows from that choice. (Why streaming feels faster in the first place is covered in [cost-and-caching.md question 6](cost-and-caching.md#6-streaming-doesnt-reduce-total-cost-or-total-latency-why-do-teams-treat-it-as-a-latency-win-anyway); this question is about keeping it working.)
+
+**The wire format.** An SSE response is `Content-Type: text/event-stream`, made of `field: value` lines. The WHATWG HTML spec defines four fields: `data`, `event`, `id` and `retry`. A blank line dispatches the event, and a line starting with `:` is a comment the client ignores. If the server sets `id`, the browser's `EventSource` remembers it and sends it back in a `Last-Event-ID` request header when it reconnects. `retry` sets the reconnect delay in milliseconds. The spec also says when the client gives up for good: a non-200 status or the wrong content type closes the connection with no retry, and a 204 tells it to stop reconnecting. A plain network drop or a normally ended stream makes it reconnect (WHATWG HTML, "Server-sent events", fetched 2026-11-02).
+
+```
+id: msg_42:17
+event: delta
+data: {"text": " world"}
+
+: keepalive
+```
+
+**Proxies and timeouts.** The most common "streaming doesn't work" bug is a proxy buffering the whole response. nginx has `proxy_buffering on` by default. Turning it off passes the response to the client "synchronously, immediately as it is received", and the upstream can do the same per response by sending `X-Accel-Buffering: no` (nginx `ngx_http_proxy_module` docs, fetched 2026-11-02). Compression middleware can buffer too, so check that as well. Idle timeouts are the second problem. nginx's `proxy_read_timeout` defaults to 60s between reads, and cloud load balancers have their own idle timeouts. A model thinking for a long time, or a slow tool call, produces silence, and the connection gets cut. The spec suggests sending a comment line about every 15 seconds for this reason. Anthropic's stream also contains `ping` events, but those keep your connection to Anthropic alive, not your user's connection to you, so you still need your own heartbeat.
+
+**What happens upstream when the user leaves.** This is where people guess, so be precise. Anthropic's streaming docs and OpenAI's streaming guide (both fetched 2026-11-02) say nothing about whether closing the provider connection stops generation, or whether you're billed for tokens generated after you stop reading. Neither page documents it. The safe assumption for cost planning is that you may pay for the full generation. That leaves you with a real decision:
+
+- Abort the upstream request when the client disconnects. This saves tokens if the provider stops, but a user who refreshes or loses Wi-Fi gets nothing to resume.
+- Keep generating to completion regardless. The answer is ready when they come back, at the price of paying for answers nobody reads.
+
+A common middle ground is to keep going through short disconnects (a grace period of some seconds) and abort if nobody reattaches. An explicit Stop button is a different signal from a dropped connection, and it should always abort.
+
+**Resumable streams.** Decouple generation from the HTTP request. A worker consumes the provider stream and appends each chunk to a store keyed by message id (Redis streams or a list work well), with a sequence number. The SSE handler reads from that store, and it uses `msg_id:seq` as the SSE `id`. On reconnect, `Last-Event-ID` tells you where to restart: replay everything after that sequence, then tail live. That also gives you multi-tab viewing for free. Set a TTL on the buffer and write the final message to the database when generation ends. Note that native `EventSource` only does GET and can't set custom headers, so many chat apps use `fetch` with a streaming body reader instead. If you do that, you implement the reconnect and last-id logic yourself.
+
+**Cancellation and what you save.** Decide what ends up in chat history when a message stops early, because the next turn will send it back to the model as context. Save the partial text with a status (`complete`, `stopped_by_user`, `interrupted`, `error`) and the stop reason. A partial `tool_use` block is a trap: the input JSON arrives as partial strings and is only valid at `content_block_stop`, so never execute or store a half-built tool call as if it were real. Drop it or mark it incomplete. Anthropic's docs say the same about recovery: tool use and thinking blocks can't be partially recovered, and you resume from the most recent text block.
+
+**Errors mid-stream.** The HTTP status is already 200 by the time the first token goes out, so a failure later has to arrive as an event. Anthropic sends an `error` event inside the stream, for example `overloaded_error`, which would be an HTTP 529 in a non-streaming call. Its docs describe a recovery pattern: keep the partial response, then send a continuation request (as a prefilled assistant message on Claude 4.5 and earlier, or as a user message asking it to continue on 4.6 and later). OpenAI's guide lists an `error` event type too. Your own SSE stream should forward these as a typed event the UI can render, with the partial text kept and a retry button, and not just close the connection, since `EventSource` would read a closed connection as a cue to reconnect.
+
+**SSE or WebSockets?** For token streaming, SSE is usually the better default. It's plain HTTP, it goes through most proxies once buffering is off, and reconnection with a last id is in the spec. The traffic is one-way anyway, since the user's next message can be a normal POST. Reach for WebSockets when you need real two-way traffic on one connection: voice, collaborative editing, or interrupting the model mid-generation at low latency. You then build your own reconnect, resume and heartbeat logic, and some corporate proxies handle WebSocket upgrades badly.
+
+</details>

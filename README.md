@@ -11,7 +11,7 @@ The field moves fast enough that confidently repeating a stale fact is a real in
 Each question hides its answer behind a collapsible block. Read the question, answer it out loud, *then* expand. Reading answers you haven't attempted feels productive and teaches almost nothing.
 
 ```
-questions/    — 105 questions with answers, grouped by topic
+questions/    — 114 questions with answers, grouped by topic
 reference/    — cheat sheets for the things that changed recently
 sources.md    — every source, with its quality grading
 ```
@@ -33,17 +33,17 @@ Not everything here is equally certain, and the notes say so.
 | Topic | Questions | Notes |
 |---|---|---|
 | [Agent protocols](questions/agent-protocols.md) | 9 | MCP, A2A, ACP, Agent Skills. Mostly `verified 3-0`. |
-| [Agent architecture](questions/agent-architecture.md) | 6 | Loops, harnesses, why benchmarks lie. |
-| [Retrieval and RAG](questions/retrieval-and-rag.md) | 5 | Where the received wisdom is wrong. |
-| [Evaluation](questions/evaluation.md) | 4 | Reported as the largest skill gap in the candidate pool. |
-| [Inference and systems](questions/inference-and-systems.md) | 8 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API. |
+| [Agent architecture](questions/agent-architecture.md) | 8 | Loops, harnesses, why benchmarks lie, reliable tool use, stuck loops. |
+| [Retrieval and RAG](questions/retrieval-and-rag.md) | 9 | Where the received wisdom is wrong, plus RAG design, debugging, hybrid search and rerankers. |
+| [Evaluation](questions/evaluation.md) | 5 | Reported as the largest skill gap in the candidate pool. |
+| [Inference and systems](questions/inference-and-systems.md) | 9 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API, SSE streaming. |
 | [Senior and behavioural](questions/senior-and-behavioural.md) | 4 | The rounds where most candidates actually fail. |
 | [Model evaluation](questions/model-evaluation.md) | 7 | Perplexity, bits per byte, quantization damage, contamination. |
 | [Uncertainty quantification](questions/uncertainty-quantification.md) | 6 | Runtime confidence: semantic entropy, calibration, selective answering. |
 | [Post-training](questions/post-training.md) | 7 | LoRA, QLoRA, SFT vs RLHF vs DPO, forgetting, distillation for agents. |
 | [Context engineering](questions/context-engineering.md) | 8 | Context rot, compaction, agent memory, structured outputs. |
 | [Cost and caching](questions/cost-and-caching.md) | 7 | Prompt vs semantic caching, routing, cost attribution. |
-| [LLM security](questions/llm-security.md) | 8 | Prompt injection, the lethal trifecta, least-privilege agents. |
+| [LLM security](questions/llm-security.md) | 9 | Prompt injection, the lethal trifecta, least-privilege agents, PII redaction. |
 | [Multimodal](questions/multimodal.md) | 7 | VLM architecture, image token cost, document parsing, voice latency. |
 | [LLMOps](questions/llmops.md) | 8 | Tracing, silent model drift, prompt rollout, deprecations, SLOs. |
 | [Data curation](questions/data-curation.md) | 8 | Dedup, quality classifiers, model collapse, preference data, mixtures. |
@@ -59,7 +59,7 @@ Not everything here is equally certain, and the notes say so.
 
 ## A caveat on dates
 
-Compiled 10 September 2026. The protocol material is the most perishable: MCP's stateless revision was roughly six weeks old at the time of writing and SDK migration was still in flux. Re-check anything version-pinned before relying on it in an interview. The post-training, context engineering, cost and caching, LLM security, multimodal, LLMOps and data curation files were added 25 September 2026, and their pricing and limits come from provider docs fetched that day.
+Compiled 10 September 2026. The protocol material is the most perishable: MCP's stateless revision was roughly six weeks old at the time of writing and SDK migration was still in flux. Re-check anything version-pinned before relying on it in an interview. The post-training, context engineering, cost and caching, LLM security, multimodal, LLMOps and data curation files were added 25 September 2026, and their pricing and limits come from provider docs fetched that day. Nine scenario questions on RAG, agents, PII, streaming and support-bot evals were added 2 November 2026.
 
 ## Licence
 

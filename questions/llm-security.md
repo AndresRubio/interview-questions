@@ -203,3 +203,39 @@ The most complete published example is Meta's harness for its Muse agent, as rep
 **How to position them:** classifiers sit *in front of* deterministic controls, never *in place of* them. If removing the classifier would make the system unsafe, the architecture isn't doing its job.
 
 </details>
+
+---
+
+### 9. Redact PII before it reaches the model. Where does the redactor sit, and how do you know it works?
+
+See also [data-curation.md question 8](data-curation.md#8-how-do-you-turn-production-traces-into-training-data-from-error-analysis-to-a-dataset-without-creating-privacy-or-licensing-problems) for PII in training data, and [llmops.md question 1](llmops.md#1-how-would-you-trace-an-agent-run-end-to-end-and-what-is-the-actual-status-of-the-opentelemetry-genai-conventions) for the traces the redactor has to protect.
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+Put it at the gateway, as the first thing a request touches, so that the provider call, your logs and traces, and the prompt or semantic cache all see the redacted text. If redaction happens after logging, the raw prompt is already sitting in your trace store. If it happens after the cache key is computed, the cache holds PII and can serve one user's answer to another. This is OWASP LLM02:2025, Sensitive Information Disclosure, in the [Top 10 list](https://genai.owasp.org/llm-top-10/) from question 4.
+
+**Detection.** There are three approaches, and they trade precision against recall differently.
+
+- Regex plus checksums (Luhn for card numbers, IBAN check digits, national ID formats) are cheap, deterministic and very precise for structured IDs. They find nothing that lacks a fixed shape, such as a name or a home address written in a sentence.
+- NER models catch names, places and organisations in free text. Recall is decent, but precision drops: "Jordan" the person and "Jordan" the country, product names tagged as people. Accuracy also falls on languages and domains the model wasn't trained on.
+- An LLM detector has the best recall on messy text ("my sister's kid, the one at Lincoln Elementary"). It costs a model call and adds latency, it is probabilistic, and you are sending the raw text to a model to find out whether you may send it to a model. That only works if the detector runs locally or inside your trust boundary.
+
+In practice you layer them: rules first, NER second, and an LLM pass only for high-risk flows. [Microsoft Presidio](https://microsoft.github.io/presidio/) is the usual open-source starting point and works this way. Its recognizers combine "Named Entity Recognition, regular expressions, rule based logic and checksum," use surrounding context to raise confidence, and feed an anonymizer that applies a chosen operator per entity type. (Fetched 2026-11-02. The docs URL now redirects to presidio.dataprivacystack.org, and the page says Presidio has moved to community ownership.) The same page warns there is "no guarantee that Presidio will find all sensitive information," which is the honest framing for any redactor.
+
+**Reversible versus irreversible.** Irreversible masking (`***` or `<REDACTED>`) is safest but hurts answers. The model can't tell two people apart, can't refer back to "the customer," and writes replies with holes in them. Reversible pseudonymisation replaces each value with a stable typed placeholder (`<PERSON_1>`, `<EMAIL_2>`), keeps the mapping in your own store for the length of the request, and swaps the real values back into the response before the user sees it. Answer quality survives because the model still sees structure: which entity is which, what type it is, and how often each appears. It can write "Dear <PERSON_1>, your refund to <EMAIL_2>..." and the re-identified reply reads naturally. The costs: the mapping table is now the sensitive asset, so encrypt it, scope it to the request and expire it. Consistency matters too: the same value must get the same placeholder across turns of a conversation, or the model loses track. And tasks that need the real value (spell-check a name, validate an address) break, so those flows need an exception and a different control. Use irreversible masking for logs and for anything that leaves the request lifecycle.
+
+**What leaks anyway.**
+
+- Free text that no detector reliably catches: rare names, indirect identifiers ("the only cardiologist in town"), or combinations that only identify someone together.
+- Images and PDFs. Screenshots, scanned IDs and photos of documents skip a text redactor entirely unless you OCR them first, and OCR misses things.
+- Tool outputs and retrieved documents. A CRM lookup or RAG chunk puts PII into context after the gateway check. The redactor has to run on every path into the context window, not only the user turn, or those sources have to be trusted and access-controlled at retrieval time (question 4).
+- Model output. The model can repeat or infer PII, so scan the response on the way out as well.
+
+**Logging and retention.** Log the redacted prompt and the placeholder types, never the mapping. Set retention on traces deliberately rather than inheriting the default from your observability vendor. On the provider side, read their data-usage and retention terms (training opt-out, abuse-monitoring retention windows, zero-data-retention options) and treat them as a second layer. A contract doesn't remove your own logs from scope.
+
+**Measuring the redactor.** Build a labelled set from real traffic shapes (synthetic or consented samples, labelled per entity span and type), including the hard cases: multilingual text, typos, IDs split across lines. Report recall and precision per entity type, because a single number hides the gap between card numbers at 99% and names at 80%. Weight recall higher: a missed SSN is an incident, while a false positive mostly costs answer quality. Track that cost too, by running your task evals with and without redaction. Rerun the set on every detector or model change and add each production miss to it.
+
+</details>

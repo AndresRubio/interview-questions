@@ -27,6 +27,11 @@ Quality grading reflects the source type, not agreement with it.
 | NVIDIA [H100](https://www.nvidia.com/en-us/data-center/h100/) and [H200](https://www.nvidia.com/en-us/data-center/h200/) specs | Memory capacity and bandwidth. Fetched 2026-10-03. |
 | [Llama-3.1-70B config](https://huggingface.co/unsloth/Meta-Llama-3.1-70B/blob/main/config.json) | Layers, KV heads, hidden size for KV-cache arithmetic. Ungated mirror of the gated meta-llama repo. Fetched 2026-10-03. |
 | [Linux Foundation press](https://www.linuxfoundation.org/press) | A2A governance, membership (promotional on adoption) |
+| [WHATWG HTML, Server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html) | SSE fields, `Last-Event-ID`, 204 stops reconnection, 15-second comment keepalive. Fetched 2026-11-02. |
+| [nginx ngx_http_proxy_module](https://nginx.org/en/docs/http/ngx_http_proxy_module.html) | `proxy_buffering` default, `X-Accel-Buffering`, `proxy_read_timeout` 60s. Fetched 2026-11-02. |
+| [Anthropic streaming docs](https://platform.claude.com/docs/en/build-with-claude/streaming) and [API errors](https://platform.claude.com/docs/en/api/errors) | `ping` and `error` events, `overloaded_error`/529, partial tool_use JSON, resume rules for Claude 4.5 vs 4.6. Fetched 2026-11-02. |
+| [OpenAI streaming guide](https://developers.openai.com/api/docs/guides/streaming-responses) | `error` event type; silent on disconnect billing. Fetched 2026-11-02. |
+| [Anthropic strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use) and [OpenAI function calling](https://developers.openai.com/api/docs/guides/function-calling) | `strict: true`, schema subset limits. Fetched 2026-11-02. |
 
 ## Peer-reviewed and preprints
 
@@ -45,6 +50,10 @@ Quality grading reflects the source type, not agreement with it.
 | [InstructGPT](https://arxiv.org/abs/2203.02155) — Ouyang et al. | NeurIPS 2022 |
 | [LoRA Learns Less and Forgets Less](https://arxiv.org/abs/2405.09673) — Biderman et al. | TMLR 2024 |
 | [Co-Evolving Harnesses and Models](https://arxiv.org/abs/2609.09134) — Salesforce | Preprint, Sep 2026 |
+| [τ-bench](https://arxiv.org/abs/2406.12045) — Yao, Shinn, Razavi & Narasimhan (Sierra) | arXiv preprint, 2024. Fetched 2026-11-02. |
+| [Seven Failure Points When Engineering a RAG System](https://arxiv.org/abs/2401.05856) — Barnett et al. | arXiv preprint, Jan 2024 (experience report, three case studies) |
+| [BEIR](https://arxiv.org/abs/2104.08663) — Thakur et al. | NeurIPS 2021 Datasets and Benchmarks |
+| [Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods](http://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf) — Cormack, Clarke & Büttcher | SIGIR 2009 |
 | [Don't Break the Cache](https://arxiv.org/abs/2601.06007) — prompt caching for agents | Preprint, Jan 2026 |
 | [GPT Semantic Cache](https://arxiv.org/abs/2411.05276) | Preprint |
 | [Not what you've signed up for](https://arxiv.org/abs/2302.12173) — Greshake et al., indirect injection | AISec 2023 |
@@ -98,6 +107,9 @@ Quality grading reflects the source type, not agreement with it.
 | [LiteParse](https://github.com/run-llama/liteparse) | Local PDF parsing with selective OCR |
 | [POPE repo](https://github.com/RUCAIBox/POPE) | Negative-sampling settings |
 | [Voice agents: a deep dive](https://boringbot.substack.com/p/voice-agents-a-deep-dive) — Hamza Farooq, Jul 2026 | 700–800 ms turn budget (only the free part of the paywalled post was checked) |
+| [Anthropic — Writing effective tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents) | Tool consolidation, namespacing, descriptions, error messages, eval loop. Fetched 2026-11-02. |
+| [Berkeley Function Calling Leaderboard](https://gorilla.cs.berkeley.edu/leaderboard.html) | AST/executable scoring, relevance detection, multi-turn since v3. Fetched 2026-11-02. |
+| [Microsoft Presidio](https://presidio.dataprivacystack.org/) | Recognizer design, context enhancement, anonymizer operators, "no guarantee" caveat. Community-owned; old microsoft.github.io URL redirects. Fetched 2026-11-02. |
 
 ## Known weaknesses
 

@@ -117,3 +117,116 @@ Practical notes that generalise:
 The principle worth stating: **when a document format carries real structure, using it beats any chunking heuristic.** This is a good decision to lead with, because it demonstrates reading the source rather than reaching for a default splitter.
 
 </details>
+
+---
+
+### 6. Design RAG for 10 million documents, end to end.
+
+<details>
+<summary>Answer</summary>
+
+Start by asking what the documents are and who can see them, because those two answers drive more of the design than the vector database does. Then walk the pipeline in order and put numbers on the parts that cost money.
+
+**Ingestion.** Parsing is where quality is won or lost at this size. PDFs with tables, scanned pages and slide decks each need their own parser, and you want a per-format sample checked by a human before you embed 10M of anything. Store the parsed text with a content hash so re-ingestion only re-embeds what changed.
+
+**Chunking.** Use the document's own structure where it has one (see [question 5](#5-how-would-you-chunk-a-corpus-that-has-its-own-published-structure)), and fall back to a few hundred tokens with overlap where it doesn't. Attach document ID, section path, version, timestamp and the ACL to every chunk. Assume about 10 chunks per document, so roughly 100M chunks.
+
+**Index choice and memory.** This is the maths interviewers want to see:
+
+- 100M vectors at 1,024 dimensions in float32 is 100M x 1,024 x 4 bytes, about 410 GB of raw vectors.
+- HNSW adds graph links on top. With M=32 you store around 2M neighbour IDs on layer 0, so about 64 x 4 = 256 bytes per vector, another 25 GB or so.
+- int8 scalar quantization cuts the vectors to about 100 GB. Product quantization at 64 bytes per vector gets you to about 6.4 GB, with a recall cost you then recover by rescoring the top few hundred against full-precision vectors kept on disk.
+
+So the realistic options are HNSW with quantized vectors sharded across a few large-memory nodes, or an IVF-PQ or disk-based graph index (DiskANN-style) that keeps compressed codes in RAM and full vectors on SSD. Smaller embedding dimensions (Matryoshka-style truncation to 256 or 512) are often the cheapest lever of all, and you should measure recall on your own data before and after each compression step.
+
+**Hybrid retrieval.** Run BM25 alongside the dense index and fuse the lists (see [question 8](#8-bm25-dense-or-hybrid-when-do-you-use-each)). At this scale lexical retrieval is cheap, strong, and catches identifiers that embeddings miss.
+
+**Reranking.** Take the top 50 to 200 fused candidates through a cross-encoder and keep the best 5 to 20 for the prompt. Prove it helps before you pay for it (see [question 9](#9-you-added-a-reranker-how-do-you-prove-it-helped)).
+
+**Permissions.** Filter at retrieval time inside the index, using ACL metadata on each chunk, and never by asking the model to ignore what it shouldn't see. Post-filtering after top-k is the common mistake: a user with narrow access gets a top-k that is mostly filtered out and sees empty or poor results. Prefer pre-filtered or filtered-HNSW search, or partition the index by tenant when tenants are large. ACL changes must propagate quickly, so treat them as their own update stream.
+
+**Freshness.** Use change data capture or a crawl queue, re-embed changed chunks by hash, and handle deletes as tombstones that are actually purged (deleted content showing up in answers is a compliance problem). Decide up front whether a model upgrade means re-embedding all 100M chunks, since that is a batch job measured in days and a bill you should estimate before you choose the model.
+
+**Context assembly and cost.** How you pack chunks into the prompt and keep it cache-friendly is covered in [context engineering](context-engineering.md#2-long-context-models-advertise-1m-tokens-why-not-just-put-everything-in) and [cost and caching](cost-and-caching.md#3-what-makes-a-prompt-cache-friendly-and-how-do-people-accidentally-defeat-their-own-cache).
+
+**Eval.** Two layers, as in [question 4](#4-how-do-you-evaluate-a-rag-system): recall@k on a labelled query set for retrieval, and failure-mode-driven checks on the answers. Build the labelled set before the index so you can make every choice above (chunk size, quantization, hybrid weights) on evidence.
+
+The trade-off to say out loud: most of the risk sits in parsing, permissions and freshness. The index is the part with the best off-the-shelf answers.
+
+</details>
+
+---
+
+### 7. Your RAG system gives wrong answers. How do you debug it?
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+First decide whether retrieval or generation failed, because the fixes have nothing in common. Take a labelled set of failing questions, mark the chunk that contains the answer, and check whether that chunk was in the retrieved top-k.
+
+- **Right chunk not retrieved.** It's a retrieval problem. Measure recall@k across the labelled set to see how widespread it is.
+- **Right chunk retrieved, answer still wrong.** It's a generation problem. Check faithfulness: does the answer follow from the context, or did the model ignore it, misread it, or fill a gap from its own weights?
+- **No chunk contains the answer.** It's a corpus problem, and the system should have said "I don't know".
+
+Barnett et al., *Seven Failure Points When Engineering a Retrieval Augmented Generation System* (arXiv 2401.05856, 2024), list failures drawn from three case studies: missing content, missed top-ranked documents, the answer not making it into the context, the answer in context but not extracted, wrong format, wrong specificity, and incomplete answers. It's a useful checklist, though it comes from experience reports and not a controlled study.
+
+I work the taxonomy roughly in pipeline order, because upstream bugs masquerade as downstream ones:
+
+1. **Ingestion and parsing.** Open the stored text for a failing document. Tables flattened into nonsense, missing pages from scanned PDFs and boilerplate drowning the content are common and invisible from the answer alone.
+2. **Chunking.** The answer may be split across two chunks, or separated from the heading that gives it meaning. Fixes are structure-aware chunking or attaching the section path to each chunk.
+3. **Query mismatch.** Users ask in different words than the documents use, or use abbreviations and IDs that the embedding model handles badly. Look at the query next to the gold chunk. Hybrid retrieval, query rewriting or a domain-tuned embedder help here.
+4. **Ranking.** The gold chunk is at rank 40 and you pass the top 10. Recall@50 versus recall@10 tells you whether a reranker or a larger k would fix it.
+5. **Context ordering and assembly.** The chunk made the prompt but sits in the middle of a long context, or was truncated by a token budget. Models use information in the middle of long contexts less reliably (Liu et al., "Lost in the Middle", arXiv 2307.03172), so put the strongest evidence first and pass fewer, better chunks.
+6. **Generation.** The context is good and the model still errs. Tighten the instructions on citing and abstaining, check for conflicting chunks (old and new versions of a policy), and evaluate with a validated judge as in [question 4](#4-how-do-you-evaluate-a-rag-system).
+
+The judgment call: resist tuning the prompt until you know retrieval works, since prompt fixes for retrieval failures overfit to the examples you looked at. Keep the failing questions as a regression set so the fix stays fixed.
+
+</details>
+
+---
+
+### 8. BM25, dense, or hybrid: when do you use each?
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+Default to hybrid, and know the cases where one side alone is enough. [Question 1](#1-when-does-bm25-beat-an-agentic-retrieval-loop) covers BM25 against agentic search at scale; this question is about the lexical versus dense choice inside a single retriever.
+
+**BM25 alone** makes sense when queries carry exact tokens: error codes, part numbers, function names, legal citations, people's names. Dense embeddings blur these, because "ERR-4012" and "ERR-4021" look nearly identical to an embedding model. BM25 also needs no training, no GPU, and is easy to debug since you can see why a document matched.
+
+**Dense alone** makes sense when queries and documents use different vocabulary for the same idea (a user's "my card got eaten" against a page titled "ATM retained card"), and when you have in-domain training data or a strong embedder tested on your corpus.
+
+**Domain shift** is the argument against trusting dense retrieval blindly. BEIR (Thakur et al., arXiv 2104.08663, 2021; NeurIPS 2021 Datasets and Benchmarks) tested retrievers zero-shot across 18 datasets and found BM25 a strong baseline that many dense models trained on MS MARCO failed to beat out of domain. Embedders have improved a lot since, but the lesson holds: an embedder's leaderboard score is a prior, and your own labelled queries are the test.
+
+**Hybrid** runs both and fuses the ranked lists. Reciprocal Rank Fusion (Cormack, Clarke and Büttcher, SIGIR 2009) scores each document as the sum of 1/(k + rank) across the lists, with k = 60 in the paper. It uses ranks only, so you don't need to calibrate BM25 scores against cosine similarities, and in the paper it beat the best individual input system as well as Condorcet fusion. Weighted score fusion can beat RRF once you have labelled data to tune the weights, at the cost of retuning whenever an embedder or the corpus changes.
+
+What I'd say in the interview: hybrid costs a second index and some latency, and in exchange you stop losing the identifier queries and the paraphrase queries. If measurement on your own queries shows one side contributes nothing, drop it.
+
+</details>
+
+---
+
+### 9. You added a reranker. How do you prove it helped?
+
+<details>
+<summary>Answer</summary>
+
+Measure it in three places: offline retrieval metrics, offline answer quality, and an online test. A reranker that improves nDCG and leaves answers unchanged hasn't paid for its latency.
+
+**What it is.** A bi-encoder embeds the query and documents separately, so document vectors are precomputed and search is fast. A cross-encoder reads the query and one candidate together and outputs a relevance score. It's more accurate because it sees the interaction between the two, and much slower because nothing can be precomputed: scoring 100 candidates means 100 forward passes (batched) per query. That's why you use it as a second stage on a short list.
+
+**Latency cost.** Budget it explicitly. Reranking 100 candidates with a small cross-encoder on a GPU is typically tens of milliseconds; a large model or a hosted API call adds more plus network time. Candidate depth is the dial: more candidates give the reranker more to work with and cost linearly more.
+
+**Offline retrieval metrics.** On a labelled query set, compare nDCG@k and recall@k for the final k you pass to the model, with and without the reranker. Also report recall at the candidate depth (say recall@100 of first-stage retrieval). That number is the ceiling: a reranker can only reorder what retrieval returned, so if the gold chunk isn't in the top 100, no reranker will save it, and the work belongs in first-stage retrieval.
+
+**End-to-end answer eval.** Run the same question set through the full pipeline both ways and grade answers with your validated judge or human labels (see [question 4](#4-how-do-you-evaluate-a-rag-system)). Better ranking may not change answers if the model was already finding the gold chunk at rank 8 in a 10-chunk context. It often matters most when it lets you pass fewer chunks, which also saves tokens.
+
+**Online A/B test.** Offline sets drift from real traffic, so ship behind a flag and compare on metrics you defined beforehand: answer acceptance or thumbs-up rate, follow-up rephrasing rate, escalation to a human, citation clicks, and p95 latency as a guardrail. Fix the sample size before starting, and don't stop early when the line looks good.
+
+If you use a hosted reranker, check the vendor's current documentation for model names, input limits and pricing at the time you build, since these change often. The judgment to show: if recall at the candidate depth is low, fix retrieval first; a reranker is the second thing you tune.
+
+</details>
