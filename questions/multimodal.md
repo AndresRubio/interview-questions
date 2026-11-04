@@ -168,3 +168,44 @@ They are weakest at **precise low-level perception**: counting, spatial relation
 **The senior instinct** is to treat the VLM as a strong generalist reader with poor precision, and to route precise perception to deterministic tools, the same way you would not ask an LLM to do long arithmetic in its head.
 
 </details>
+
+---
+
+### 8. Design a file uploader for large multimodal files that feeds an AI chat application.
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+Send the bytes straight from the browser to object storage, keep a file record in your own database that moves through explicit states, and let an asynchronous pipeline turn each file into derived text and images that the chat retrieves under the user's own permissions. The limits below come from vendor docs fetched 2026-11-04; the design choices are my reasoning.
+
+**Upload path.** The app server authenticates the user, checks quota, creates the file record, starts an S3 multipart upload and signs one URL per part, so bytes never touch the app servers. S3 allows 10,000 parts of 5 MiB to 5 GiB each, up to a 48.8 TiB object, and AWS suggests considering multipart from 100 MB. A failed part is retransmitted alone, and resuming means asking the server which parts it has recorded and signing fresh URLs for the rest.
+
+Presigned URLs are bearer tokens, so sign them for minutes. S3 checks expiry when the request arrives, so a transfer already running finishes after expiry, though a retry after that fails. A URL signed with temporary credentials dies when those credentials do.
+
+tus is the alternative: an open protocol where the client asks for `Upload-Offset` with `HEAD` and continues with `PATCH`, with extensions for expiry, checksums (a mismatch returns `460`) and parallel uploads through concatenation. It resumes at byte level across storage vendors, but the tus server is back in the data path. I would default to S3 multipart and pick tus for multi-cloud or on-premises deployments.
+
+**Integrity and abandoned uploads.** Send a checksum with each part, and record each part number and ETag yourself, because AWS says to use its listing only for verification. With checksums, part numbers must be consecutive from 1. An unfinished upload has no expiry and its parts are billed until it is completed or stopped, so add an `AbortIncompleteMultipartUpload` lifecycle rule (AWS's example uses 7 days). That rule ignores completed objects, so you also need a sweeper for files that finished and were never attached to a message.
+
+**Validation and scanning.** Everything lands in a quarantine bucket under a generated name that no user-facing path can read. OWASP says not to trust `Content-Type` and warns that signature checks are easily bypassed when used alone, so combine an extension allowlist, a signature check and an actual parse with the intended decoder in a sandbox. Enforce size limits on the assembled object and again after decompression. Scan with antivirus, and consider Content Disarm and Reconstruct for PDF and DOCX, as OWASP suggests. Scanners miss things, so a promoted file still gets no execution rights.
+
+**State machine and chat behaviour.** The record moves through `uploading → scanning → processing → ready`, and any stage can go to `failed` with a reason the user can act on ("password-protected PDF", not "error"). The hard case is a user who sends before `ready`. Blocking the send annoys people during a long transcode, and letting the model answer without the file produces a confident answer that ignores it. I would accept the message, hold the model call for a short wait, then answer with whatever is available while telling the model and the user which file is still pending. A failed file must show up in the turn, so the model never implies it read something it did not.
+
+**Processing pipeline.** Each file type fans out into jobs: transcode, page render, OCR, transcription, chunking, embedding. Queue delivery can repeat, so name outputs from the content hash, job type and pipeline version, and a retry overwrites the same artefact. Parsing choices belong to [question 3](#3-you-need-to-ingest-200000-pdfs-contracts-scanned-invoices-slide-decks-for-rag-ocr-pipeline-or-let-a-vlm-read-the-pages), and video sampling to [question 6](#6-someone-wants-to-ask-questions-about-hour-long-recorded-meetings-how-do-you-think-about-video-cost).
+
+**Reaching the model.** There are three routes, with token costs in [question 2](#2-a-user-uploads-a-1920x1080-screenshot-what-does-it-cost-in-tokens-and-how-does-that-differ-across-providers).
+
+- Inline suits small images and short documents and creates no stored object at the provider. Gemini's docs send you to its Files API once a whole request passes 100 MB, with a 50 MB limit for PDFs. Anthropic allows a 128 MB request and 600 PDF pages (100 when the context window is under 1M tokens) on its first-party API.
+- A provider Files API avoids re-uploading across turns. Anthropic allows 500 MB per file and 1 TB per organisation, billed as input tokens when used. OpenAI allows 512 MB per file and 2.5 TB per project, though file inputs are capped at 50 MB per request, so storing a file does not mean you can send it whole. Gemini allows 2 GB per file and 20 GB per project and deletes files after 48 hours, so you must handle re-upload.
+- Derived text and frames retrieved by RAG is the default for anything large. A long video or a very long PDF will not fit usefully in context whatever the storage limit allows, and retrieval lets you cite a page or timestamp.
+
+I would use inline for small attachments, RAG for large ones, and the Files API only where the whole document must be read over several turns, with your object store as the source of truth throughout.
+
+**Tenant isolation and injection.** Authorise on every retrieval, with tenant and user filters enforced in the vector query by the server, never by the model, and serve originals through short-lived signed URLs issued after a permission check. Anthropic's Files API needs care: files are scoped to the workspace with no per-user scope, its docs say never to accept `file_id` values from end users, and hard tenant isolation means one workspace per tenant, with a default cap of 100 workspaces per organisation, which argues for keeping per-tenant data out of provider storage. Uploaded files are also untrusted input: OCR and transcription surface instructions a reviewer would never notice, such as white text on a page, which is indirect injection ([llm-security.md question 1](llm-security.md#1-what-is-the-difference-between-direct-and-indirect-prompt-injection-and-why-does-the-indirect-kind-matter-more)). Label retrieved content as data, and require confirmation for tool calls that send data out after a file has been read.
+
+**Retention, quotas and cost.** One upload becomes an original, renditions, OCR text, transcripts, chunks, embeddings, caches and perhaps provider copies, so keep a lineage table from each file to its artefacts and have deletion walk it and record completion. Provider copies have their own rules: Anthropic says expiry is not a guaranteed-deletion control, that content may be held for a limited period after it, and that its Files API is not eligible for zero data retention. Check quota at upload start and again on the assembled size, since the declared size can be false. I would expect transcription, VLM page reads and embeddings to outweigh storage, so meter them per tenant, deduplicate by content hash within a tenant only (across tenants, dedup leaks whether a file exists), and run expensive steps lazily when a question needs them.
+
+Sources, all fetched 2026-11-04: AWS S3 [multipart upload limits](https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html), [multipart overview](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html), [lifecycle abort rule](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html) and [presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html); [tus protocol 1.0.0](https://tus.io/protocols/resumable-upload); [OWASP File Upload Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html); Anthropic [Files API](https://platform.claude.com/docs/en/build-with-claude/files), [PDF support](https://platform.claude.com/docs/en/build-with-claude/pdf-support) and [workspaces](https://platform.claude.com/docs/en/manage-claude/workspaces); OpenAI [file inputs](https://developers.openai.com/api/docs/guides/file-inputs) and [file upload reference](https://developers.openai.com/api/reference/resources/files/methods/create); [Gemini Files API](https://aistudio.google.com/docs/files).
+
+</details>

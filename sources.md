@@ -123,3 +123,42 @@ Quality grading reflects the source type, not agreement with it.
 - Verification concentrated on **agent protocols**. The retrieval, evaluation and interview-process material is well-sourced but **not cross-checked** — treat `single-source` badges literally.
 - Several sources are **vendor-promotional** on adoption breadth — Zed's ACP editor list, the LF A2A press release, the agentskills.io client showcase. Governance and specification facts from these are authoritative; adoption framing is not.
 - Anything **version-pinned** in MCP was captured ~6 weeks after a breaking revision, while ecosystem migration was in flux.
+
+## Latency, batching, uploads, claims agent and chunking
+
+All fetched 2026-11-04.
+
+| Source | Used for |
+|---|---|
+| [OpenAI latency optimization](https://developers.openai.com/api/docs/guides/latency-optimization) | Output and prompt rules of thumb, merged, parallel and speculative calls |
+| [OpenAI predicted outputs](https://developers.openai.com/api/docs/guides/predicted-outputs) | Supported models, unsupported parameters, rejected-token billing |
+| [OpenAI batch guide](https://developers.openai.com/api/docs/guides/batch) | Limits, expiry, error file, retention |
+| [OpenAI batch create reference](https://developers.openai.com/api/reference/resources/batches/methods/create) | `metadata`, no idempotency key |
+| [OpenAI rate limits](https://developers.openai.com/api/docs/guides/rate-limits) | Batch queue limit |
+| [OpenAI pricing](https://developers.openai.com/api/docs/pricing) | Batch cached-input column |
+| [Anthropic batch processing](https://platform.claude.com/docs/en/build-with-claude/batch-processing) | Limits, result types, billing, cache hit rates |
+| [Anthropic create batch reference](https://platform.claude.com/docs/en/api/creating-message-batches) | No batch-level metadata or idempotency key |
+| [Anthropic rate limits](https://platform.claude.com/docs/en/api/rate-limits) | Batch queue limit |
+| [S3 multipart limits](https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html) | Part count, part size, object size |
+| [S3 multipart overview](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html) | Expiry, billing, part listing, checksums |
+| [S3 abort lifecycle rule](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpu-abort-incomplete-mpu-lifecycle-config.html) | Cleaning up abandoned uploads |
+| [S3 presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html) | Expiry behaviour |
+| [tus 1.0.0](https://tus.io/protocols/resumable-upload) | Resume protocol and extensions |
+| [OWASP File Upload Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html) | Validation and scanning |
+| [Anthropic Files API](https://platform.claude.com/docs/en/build-with-claude/files) | Limits, workspace scoping, `file_id` warning, retention |
+| [Anthropic PDF support](https://platform.claude.com/docs/en/build-with-claude/pdf-support) | Request size and page limits |
+| [Anthropic workspaces](https://platform.claude.com/docs/en/manage-claude/workspaces) | Default workspace cap |
+| [OpenAI file inputs](https://developers.openai.com/api/docs/guides/file-inputs) | Per-request limit |
+| [OpenAI files reference](https://developers.openai.com/api/reference/resources/files/methods/create) | Per-file and per-project limits |
+| [Gemini Files API](https://aistudio.google.com/docs/files) | Thresholds, limits, 48-hour deletion. Read from the rendered page |
+| [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing) | Sonnet 5.5 and Haiku 5.5 prices |
+| [NAIC Model Bulletin on AI, adopted 2023-12-04](https://content.naic.org/sites/default/files/2023-12-4%252520Model%252520Bulletin_Adopted_0.pdf) | Insurer accountability, human involvement, documentation. Wording checked against a text extraction, since the PDF blocks scripted downloads |
+| [Smith and Troynikov, Chroma report, 2024](https://www.trychroma.com/research/evaluating-chunking) | Recall and precision by chunk size and overlap |
+| [Anthropic Contextual Retrieval](https://www.anthropic.com/news/contextual-retrieval) | Failure rates, context size, cost |
+| [Günther et al., Late Chunking](https://arxiv.org/abs/2409.04701) | Late chunking results, overlap appendix, an inconsistency between Tables 2 and 6 |
+| [Qu, Tu and Bao, Is Semantic Chunking Worth the Computational Cost?](https://arxiv.org/abs/2410.13070) | Semantic versus fixed-size, one-sentence overlap |
+| [Bhat et al., Rethinking Chunk Size For Long-Document Retrieval](https://arxiv.org/abs/2505.21700) | Best size varies by dataset and embedder |
+| [Bennani and Moslonka, A Systematic Analysis of Chunking Strategies](https://arxiv.org/abs/2601.14123) | No overlap gain, context decline, fill-to-budget |
+| [El Bachyr et al., Empirical Evaluation of PDF Parsing and Chunking](https://arxiv.org/abs/2604.12047) | Evidence for overlap on financial documents |
+| [Voyage embeddings API](https://docs.voyageai.com/reference/embeddings-api) | `truncation` default |
+| [LlamaIndex auto-merging retriever](https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/) | Leaf-to-parent merging |

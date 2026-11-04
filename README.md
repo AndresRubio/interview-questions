@@ -11,7 +11,7 @@ The field moves fast enough that confidently repeating a stale fact is a real in
 Each question hides its answer behind a collapsible block. Read the question, answer it out loud, *then* expand. Reading answers you haven't attempted feels productive and teaches almost nothing.
 
 ```
-questions/    — 116 questions with answers, grouped by topic
+questions/    — 121 questions with answers, grouped by topic
 reference/    — cheat sheets for the things that changed recently
 sources.md    — every source, with its quality grading
 ```
@@ -33,10 +33,10 @@ Not everything here is equally certain, and the notes say so.
 | Topic | Questions | Notes |
 |---|---|---|
 | [Agent protocols](questions/agent-protocols.md) | 9 | MCP, A2A, ACP, Agent Skills. Mostly `verified 3-0`. |
-| [Agent architecture](questions/agent-architecture.md) | 8 | Loops, harnesses, why benchmarks lie, reliable tool use, stuck loops. |
-| [Retrieval and RAG](questions/retrieval-and-rag.md) | 9 | Where the received wisdom is wrong, plus RAG design, debugging, hybrid search and rerankers. |
+| [Agent architecture](questions/agent-architecture.md) | 9 | Loops, harnesses, why benchmarks lie, reliable tool use, stuck loops, a claims agent under a token budget. |
+| [Retrieval and RAG](questions/retrieval-and-rag.md) | 10 | Where the received wisdom is wrong, plus RAG design, debugging, hybrid search, rerankers, chunk size and overlap. |
 | [Evaluation](questions/evaluation.md) | 5 | Reported as the largest skill gap in the candidate pool. |
-| [Inference and systems](questions/inference-and-systems.md) | 10 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API, SSE streaming, first-token latency. |
+| [Inference and systems](questions/inference-and-systems.md) | 12 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API, SSE streaming, first-token and total latency, batching. |
 | [Senior and behavioural](questions/senior-and-behavioural.md) | 4 | The rounds where most candidates actually fail. |
 | [Model evaluation](questions/model-evaluation.md) | 7 | Perplexity, bits per byte, quantization damage, contamination. |
 | [Uncertainty quantification](questions/uncertainty-quantification.md) | 6 | Runtime confidence: semantic entropy, calibration, selective answering. |
@@ -44,7 +44,7 @@ Not everything here is equally certain, and the notes say so.
 | [Context engineering](questions/context-engineering.md) | 8 | Context rot, compaction, agent memory, structured outputs. |
 | [Cost and caching](questions/cost-and-caching.md) | 7 | Prompt vs semantic caching, routing, cost attribution. |
 | [LLM security](questions/llm-security.md) | 9 | Prompt injection, the lethal trifecta, least-privilege agents, PII redaction. |
-| [Multimodal](questions/multimodal.md) | 7 | VLM architecture, image token cost, document parsing, voice latency. |
+| [Multimodal](questions/multimodal.md) | 8 | VLM architecture, image token cost, document parsing, voice latency, large file uploads. |
 | [LLMOps](questions/llmops.md) | 8 | Tracing, silent model drift, prompt rollout, deprecations, SLOs. |
 | [Data curation](questions/data-curation.md) | 8 | Dedup, quality classifiers, model collapse, preference data, mixtures. |
 | [Interview process](questions/interview-process.md) | 3 | Loop shape, and whether you may use AI in it. |

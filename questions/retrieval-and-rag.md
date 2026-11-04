@@ -230,3 +230,37 @@ Measure it in three places: offline retrieval metrics, offline answer quality, a
 If you use a hosted reranker, check the vendor's current documentation for model names, input limits and pricing at the time you build, since these change often. The judgment to show: if recall at the candidate depth is low, fix retrieval first; a reranker is the second thing you tune.
 
 </details>
+
+---
+
+### 10. How do you choose chunk size and overlap?
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+I run it as an experiment against my own eval set, because no universal value exists. Published results change with the corpus, embedder and retriever, so they tell me what to sweep and my eval tells me what to ship. If the corpus has published structure, I start from that unit as in [question 5](#5-how-would-you-chunk-a-corpus-that-has-its-own-published-structure) and sweep only for units that are too long.
+
+**What constrains size.** The embedding model's input limit is the ceiling, and you need to know what happens above it. Voyage truncates over-length text by default unless you set `truncation=false`, so a chunk can lose its tail with no error. Below that, short factual queries tend to suit small chunks and spread-out answers suit large ones, document structure suggests boundaries, and chunk size times k has to fit the context budget.
+
+**The trade-off.** Small chunks match precisely and carry little surrounding text. Chroma (Smith and Troynikov, 2024) measured token-level results with 5 retrieved chunks and `text-embedding-3-large`: a recursive splitter at 800 tokens with 400 overlap got recall 85.4 and precision 1.5, and at 200 tokens with no overlap got recall 88.1 and precision 7.0. The dataset is 472 LLM-generated queries over 328,208 tokens, which the authors call small. Bhat et al. (arXiv 2505.21700) found the best fixed size varied by dataset and embedder across 64 to 1,024 tokens; on COVID-QA, Stella peaked at 64 and Snowflake at 1,024.
+
+**Separate the retrieval unit from the unit the model reads.** Embed small pieces and hand over the larger parent, which loosens the trade-off. LlamaIndex's auto-merging retriever embeds only leaf nodes and swaps in a parent when enough of its children are retrieved. You pay in storage and one more threshold, and I have no controlled study of the benefit to quote, so it goes in the sweep too.
+
+**Overlap evidence conflicts,** so it gets its own arm.
+
+- Bennani and Moslonka (arXiv 2601.14123) found no measurable gain on Natural Questions with SPLADE and no reranker (|ΔBERTScore| ≤ 0.004), while 20% overlap means 1.25x the chunks. Their grid lists overlaps of 0% and 20%, though their results text says 10 to 20%, so I quote the 20% figure. They ask for validation on specialized domains.
+- Günther et al. saw no clear advantage from 16 tokens on 256-token chunks, and Qu et al. no notable gain from one overlapping sentence. Both overlaps are small.
+- Chroma's result depends on the splitter. With `all-MiniLM-L6-v2` at 250 tokens, 125 overlap moved a token splitter's recall from 77.1 to 82.4 and a recursive one's from 78.5 to 78.7.
+- El Bachyr et al. (arXiv 2604.12047) point the other way. On financial PDFs, going from no overlap to 25% lifted page-level MRR from 0.529 to 0.658 on FinanceBench and from 0.735 to 0.833 on TableQuest, with 50% slightly lower.
+
+**Restoring lost context directly.** Anthropic's Contextual Retrieval prepends 50 to 100 tokens of LLM-written context to each chunk. In their own experiments, top-20 failure fell from 5.7% to 3.7% with contextual embeddings, 2.9% adding contextual BM25, and 1.9% adding reranking. They estimate $1.02 per million document tokens, assuming prompt caching and Claude 3 Haiku. Late chunking (Günther et al., arXiv 2409.04701) runs a long-context embedder over the whole text and pools per chunk afterwards, with no LLM. Across three models and four BeIR datasets, average nDCG@10 at 256-token chunks went from 52.2 to 54.0, unevenly, and naive chunking won on some reading-comprehension tasks with large chunks. One caveat on that setup: the paper says its main runs use no overlap, but its Table 2 figures for jina-embeddings-v2-small match the with-overlap column of its own overlap appendix (Table 6), so the exact configuration behind the averages is unclear. These authors built some of the models tested, and their comparison with contextual embeddings covers one fictional document. Semantic chunking has to earn its cost: Qu et al. (arXiv 2410.13070) saw it win mainly on artificially stitched documents, with fixed-size often better on real ones.
+
+**Running the sweep.** Compare at a fixed token budget, because smaller chunks at the same k return less context. By my arithmetic, Chroma's 5 chunks are about 685 tokens at the 137-token mean and about 3,300 at the 661-token mean. Bennani and Moslonka fill a token budget in rank order for this reason. Remove duplicated overlap text before counting. Measure recall and token-level precision at that budget, then grade answers with the two layers from [question 4](#4-how-do-you-evaluate-a-rag-system), keeping your real reranker in the pipeline. Retrieval metrics can't show what context does to the model: in Bennani and Moslonka's setup, BERTScore held from 0.5k to 2.5k tokens and fell about 4 to 5% relative by 10k, a point they say to re-tune per model. My own default to test, not a finding: sentence-aware splits at 300 tokens with no overlap, against 150, 600 and a 20% overlap arm.
+
+**Re-indexing and document classes.** Every arm means new embeddings, and content hashes don't help because the chunks themselves change. I sweep on a sample, confirm the winner on the full corpus since a sample has fewer distractors, and version the chunking config so a later change is a batch job with a known bill. Break results down by document class too, since contracts, tickets and tables may want different settings. Each extra config is more to maintain and re-test, so I split only where a class clearly differs beyond the noise in paired confidence intervals.
+
+Sources: Chroma, "Evaluating Chunking Strategies for Retrieval" (trychroma.com/research/evaluating-chunking); Anthropic, "Introducing Contextual Retrieval" (anthropic.com/news/contextual-retrieval); arXiv 2409.04701, 2410.13070, 2505.21700, 2601.14123, 2604.12047; Voyage embeddings API reference; LlamaIndex auto-merging retriever docs. All fetched 2026-11-04.
+
+</details>

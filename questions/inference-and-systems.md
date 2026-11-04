@@ -293,3 +293,110 @@ These are paper results on the authors' setups, so treat them as direction and b
 I'd answer in that order: measure, remove pre-generation work, cache, then pick the model, and only then touch serving internals. Sources: Anthropic "Reducing latency" docs; arXiv 2401.09670 and 2403.02310 abstracts, all fetched 2026-11-02.
 
 </details>
+
+---
+
+### 11. Your LLM pipeline takes 8 seconds end to end. Make it faster.
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+Cut output tokens and sequential calls first, because those are where an LLM pipeline spends its time. OpenAI's latency guide gives two rules of thumb that set the priorities: "cutting 50% of your output tokens may cut ~50% of your latency", while halving the prompt may only improve latency by 1 to 5% (OpenAI, "Latency optimization", fetched 2026-11-04). Those are OpenAI's figures for its own API and its own example, so treat them as direction and check them on your traffic. Before touching anything, measure.
+
+**Measure per step.** "8 seconds" is a sum, and the fix depends on which term is large. Put a span around every model call, retrieval, tool call and post-processing step (see [question 4](#4-how-do-you-make-a-genai-system-observable-in-production)), and record input tokens, output tokens and wall time for each. Here is an illustrative breakdown, invented for this answer and not measured anywhere:
+
+```
+rewrite the user query     1.2 s   (LLM call, 40 output tokens)
+retrieval                  0.4 s
+route / classify           1.0 s   (LLM call, 15 output tokens)
+main answer                4.6 s   (LLM call, 350 output tokens)
+validate and format        0.8 s   (LLM call, 120 output tokens)
+                           -----
+total                      8.0 s
+```
+
+Even in this made-up case, two of the four model calls produce almost nothing yet cost over two seconds between them. That is mostly per-request overhead and queueing, which shrinking the prompt would barely touch. If your real trace looks like this, the sequence of calls is the problem. If one call dominates, the output length of that call is.
+
+**Why trimming the prompt rarely pays.** The model reads the prompt in one parallel pass (prefill) and then writes the answer one token at a time, so each output token costs far more wall time than each input token. That is why the 1 to 5% figure is so small. The guide says input reduction is worth pursuing mainly for very large contexts. So if your prompt is a 100K-token document dump, shortening it matters; if it is a 2K system prompt, leave it alone. For the cases where context really is large, put static content first and dynamic content (retrieved passages, history) later so the provider's prefix cache can skip the repeated part. The layout rules are in [cost-and-caching.md question 3](cost-and-caching.md#3-what-makes-a-prompt-cache-friendly-and-how-do-people-accidentally-defeat-their-own-cache).
+
+**Generate fewer tokens.** Ask for brevity, show short examples, set a stop sequence or a max length, and shrink structured-output syntax. The guide's worked example shortened JSON field names and moved explanations out of the output, which removed 19 output tokens and could save up to a second on GPT-4 (a model generation that is now old, so the absolute saving will differ today). The cost is quality: a model told to be terse sometimes drops the reasoning that made its answer right, so rerun your evaluation set after each cut.
+
+**Make fewer requests by merging steps.** In the sketch above, query rewriting and routing both read the same user message and could be one call. Ask for an enumerated list of steps and a JSON object with named fields, such as `{"query": "...", "needs_retrieval": true}`, so the next stage can parse each result. The guide's example did exactly this and then moved the merged step to a smaller fine-tuned model. The downsides are real:
+
+- A merged prompt is harder to get right, and one weak instruction can degrade the other task. Evaluate each field separately against the old two-call version.
+- You lose independent retries, caching and per-step model choice. A failure in one field forces you to rerun both.
+- The combined prompt can be longer and its output bigger, so part of the saving goes back. The guide itself frames splitting versus merging as a trade-off to settle by testing.
+
+**Run independent steps in parallel.** The guide's line is that two shirts take as long to dry as one. If retrieval and the routing check don't depend on each other, start both and wait for the slower. Latency becomes the longest branch instead of the total. Parallel calls don't reduce tokens, so cost stays the same, but you will hit rate limits sooner and have to handle partial failure.
+
+**Speculative execution** is for steps that really are sequential but where one outcome is likely. The guide's example is a moderation check: start the main generation at the same time as the check, and cancel the generation if the check says no. When the guess is right, the check adds roughly nothing to latency. When it is wrong, you have paid for tokens you throw away, so the trick only earns its keep when the likely branch is common, say 95% of traffic, and the wasted branch is cheap. Work out the break-even from your own hit rate and token prices.
+
+**Predicted outputs** apply when most of the answer is already known, as in editing a file where only a few lines change. You send the expected text in the `prediction` parameter of Chat Completions, and the model can verify matching tokens faster than it can generate them. OpenAI's predicted outputs page (fetched 2026-11-04) lists the limits: it names the GPT-4o and GPT-4.1 families (including mini and nano) as supported, and several parameters don't work with it, including `tools`, `logprobs`, `n` above 1, `max_completion_tokens`, audio and positive presence or frequency penalties. On cost, prediction tokens that don't end up in the final answer are billed at completion-token rates, and the page warns that it "can introduce higher costs". Usage reports accepted and rejected prediction tokens separately, so track the rejected share. The page gives no speedup figure, so benchmark it. A poor prediction costs money and gains no latency, which makes this a good fit for code or document rewrites and a bad one for open-ended chat.
+
+**Use a smaller model where the task allows.** Token speed depends mainly on model size, and the guide notes that a smaller model can match a larger one on a narrow task when it gets a more detailed prompt, few-shot examples or fine-tuning. Route the cheap steps, such as classification and extraction, to the small model, and keep the large one for the final answer. You pay in evaluation work and in a second model to maintain. Routing trade-offs are in [cost-and-caching.md question 4](cost-and-caching.md#4-when-do-you-reach-for-model-routing-or-cascades-instead-of-or-alongside-caching).
+
+**Take the LLM out of a step.** The guide's last principle is not to default to a model. Fixed confirmations and refusals can be hard-coded, answers for a small set of inputs can be precomputed, and a lookup, a regex or a cache can replace a call. In the sketch, "validate and format" at 0.8 s is a candidate: a JSON schema check and a template do the same job in milliseconds, and the model call can stay only for the rare failures.
+
+**What I'd do with the sketch.** Merge rewrite and routing into one small-model call, run retrieval alongside it where the data allows, cap and tighten the main answer's length, and replace the validator with code. If the answer still takes several seconds, what remains is the user's perceived wait. Streaming addresses that and is covered in [question 10](#10-cut-first-token-latency-for-a-chat-app) and [question 9](#9-stream-responses-over-sse-and-handle-disconnects); [cost-and-caching.md question 6](cost-and-caching.md#6-streaming-doesnt-reduce-total-cost-or-total-latency-why-do-teams-treat-it-as-a-latency-win-anyway) explains why it counts. The guide's own caution applies to all of this: its principles conflict (fewer requests versus faster tokens, for one), so change one thing at a time and measure on production examples.
+
+Sources: OpenAI "Latency optimization" guide (developers.openai.com/api/docs/guides/latency-optimization) and OpenAI "Predicted Outputs" guide (developers.openai.com/api/docs/guides/predicted-outputs), both fetched 2026-11-04. The 8-second breakdown, the 95% threshold and the sketch's fixes are illustrative reasoning, not source data.
+
+</details>
+
+---
+
+### 12. Design an end-to-end batching system for LLM queries.
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+Build a durable job system with one row per item, and treat each provider batch as a disposable transport for those rows. A batch can expire, partly fail or return results out of order, and none of that should lose an item or pay for it twice.
+
+First ask which "batching" they mean. Offline batch APIs take a set of requests and return results asynchronously at a discount. Dynamic or continuous batching groups live requests on a self-hosted GPU to raise throughput, which is covered in [question 3](#3-which-inference-optimisations-would-you-reach-for-and-what-does-each-cost-you) and [question 6](#6-why-is-single-user-decode-so-slow-on-a-gpu-that-costs-this-much-and-what-fixes-it). The rest of this answer is the offline system.
+
+**What the providers document** (all fetched 2026-11-04):
+
+| | OpenAI Batch API | Anthropic Message Batches |
+|---|---|---|
+| Price | 50% discount against synchronous APIs | All usage at 50% of standard prices |
+| Window | `24h` is the only option | Expires if unfinished after 24 hours; most finish within 1 hour |
+| Batch size | 50,000 requests or a 200 MB input file | 100,000 requests or 256 MB, whichever comes first |
+| Queue limit | Queued prompt tokens, per model | Queued batch requests, shared across models (500,000 on the Scale tier) |
+| Result order | May not match input order | Any order |
+| Result retention | Output file deleted 30 days after completion | 29 days from batch creation |
+| Interactive limits | Separate pool | Batch usage doesn't affect Messages API limits |
+
+**Intake and idempotency.** A client submits a job with a model, prompt version, parameters and deadline, and the items go into your own store before anything reaches a provider. I'd keep tables for jobs, items (`pending`, `in_batch`, `succeeded`, `retry_wait`, `quarantined`) and provider batches, so a crashed worker can restart from the rows. A client-supplied job ID stops a retried submission creating a second job. A content hash over model, prompt version, parameters and input lets you reuse earlier results, which suits extraction and is wrong when you want several samples, so make it a per-job option.
+
+Neither provider's batch guide or batch-creation API reference documents an idempotency key for creating a batch. The risky moment is a crash after the provider accepted a batch and before you saved its ID. Record the chunk as `submitting` first, tag the batch with your chunk ID where you can (OpenAI's batch object takes a `metadata` map of up to 16 pairs; Anthropic's has no batch-level metadata, only the per-request Messages `metadata.user_id`), and list recent batches on recovery before resubmitting. A duplicate batch then costs money but can't corrupt state, because the first terminal result per item wins.
+
+**Chunking and rate limits.** Split by whichever limit bites first, which is often bytes. At an illustrative 5 KB per request, 256 MB holds about 51,000 requests and 200 MB about 40,000. Smaller chunks give finer progress and a smaller blast radius, at the price of more batches to track. Then admit chunks against the queue limit. With illustrative numbers, a 2M-item job on Anthropic's Scale tier fits five full batches in the queue at once, and the next chunk waits for earlier ones to drain. A fair scheduler stops one backfill from holding the whole queue.
+
+**Partial failure.** Decide per item, since a batch's status says little. Anthropic returns `succeeded`, `errored`, `canceled` or `expired` for each request, and OpenAI puts failures in a separate error file, with `batch_expired` for expired requests. My policy:
+
+- Server errors go back into a later chunk, with backoff and a capped attempt count.
+- Invalid requests aren't retried, because they'll fail the same way.
+- Expired items are a capacity problem, so they requeue without using an attempt, if the deadline allows another 24-hour window.
+- An item that exhausts its attempts is a poison item. Quarantine it with the error attached and finish the job as `completed_with_errors`, so one record can't hold up the rest.
+
+Check successes too. A result truncated at `max_tokens` or failing your schema is billed and useless. Anthropic reports `params` validation errors only when the whole batch has ended and suggests dry-running the request shape on the Messages API, so one synchronous call at intake can save a day of waiting.
+
+**Reconciliation.** Results are unordered, so `custom_id` is the only join. Use something like `<item id>_a<attempt>`, keep customer data out of it, and respect Anthropic's `^[a-zA-Z0-9_-]{1,64}$`. Copy results to your own storage as soon as a batch ends, because of the retention windows. Ingest with an upsert so replaying a file is harmless, then confirm every submitted ID came back, and requeue and alert on any that didn't. Cancelling is asynchronous on both, so keep ingesting afterwards: you may have paid for those results.
+
+**Cost and caching.** Estimate and enforce the budget before submission, because Anthropic says batches may go slightly over a Workspace spend limit. Record actual usage per item and roll it up as in [cost-and-caching.md question 5](cost-and-caching.md#5-how-do-you-attribute-llm-spend-so-you-can-actually-answer-why-did-the-bill-go-up). Anthropic doesn't bill `errored`, `canceled` or `expired` requests. OpenAI charges for requests completed in an expired batch.
+
+Anthropic says the caching and batch discounts can stack, but hits are best-effort because requests run concurrently and in any order. It quotes typical hit rates of 30% to 98%, suggests the 1-hour cache duration for shared context, and doesn't support `max_tokens: 0` pre-warming inside a batch. OpenAI's batch and caching guides don't discuss the interaction, and its pricing page lists a Batch cached input price without stating the rule. I'd budget at the uncached rate, count hits as upside, and measure cached tokens per chunk.
+
+**Progress and priority.** Report from your item table: counts per state, spend so far and projected finish, since a job can span several batches and attempts. Plan around the 24-hour commitment and ignore "most finish within 1 hour" for ETAs. Provider batches don't eat live quota, so the danger is your own escape hatch: rescuing stragglers through the synchronous API costs full price and draws on your users' limits, so give that path its own low-ceiling token bucket. A job due within a day shouldn't rely on batch at all. On your own GPUs there's no separate pool, so run batch at the lowest priority and preempt it when live latency slips.
+
+**Evals and pinning.** Pin a dated model version where one exists and store the configuration on the job, so retries over several days can't mix outputs from two versions unnoticed. Drift and retirements are in [llmops.md question 3](llmops.md#3-your-provider-may-change-a-model-behind-the-same-id-how-would-you-detect-a-silent-regression) and [question 5](llmops.md#5-your-production-model-has-a-retirement-date-walk-through-the-migration-playbook). Score a canary first (an illustrative 200 stratified items) and release the rest only if it passes. Sample the finished output as well, oversampling retried items, and hold results from downstream systems until that passes.
+
+All this machinery pays off on large, repeated, deadline-tolerant work such as backfills and eval runs. For a small job, a synchronous worker with a rate limiter may cost less overall despite the higher token price.
+
+The state model, retry policy, routing rules and illustrative numbers are my own design reasoning. Sources: OpenAI Batch API guide and batch-creation API reference, prompt caching and rate limits guides and pricing page; Anthropic batch processing guide, batch-creation API reference and rate limits docs, all fetched 2026-11-04.
+
+</details>
