@@ -11,7 +11,7 @@ The field moves fast enough that confidently repeating a stale fact is a real in
 Each question hides its answer behind a collapsible block. Read the question, answer it out loud, *then* expand. Reading answers you haven't attempted feels productive and teaches almost nothing.
 
 ```
-questions/    — 121 questions with answers, grouped by topic
+questions/    — 123 questions with answers, grouped by topic
 reference/    — cheat sheets for the things that changed recently
 sources.md    — every source, with its quality grading
 ```
@@ -36,7 +36,7 @@ Not everything here is equally certain, and the notes say so.
 | [Agent architecture](questions/agent-architecture.md) | 9 | Loops, harnesses, why benchmarks lie, reliable tool use, stuck loops, a claims agent under a token budget. |
 | [Retrieval and RAG](questions/retrieval-and-rag.md) | 10 | Where the received wisdom is wrong, plus RAG design, debugging, hybrid search, rerankers, chunk size and overlap. |
 | [Evaluation](questions/evaluation.md) | 5 | Reported as the largest skill gap in the candidate pool. |
-| [Inference and systems](questions/inference-and-systems.md) | 12 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API, SSE streaming, first-token and total latency, batching. |
+| [Inference and systems](questions/inference-and-systems.md) | 14 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API, SSE streaming, first-token and total latency, batching, diagnosing a slow vLLM endpoint, choosing a serving engine. |
 | [Senior and behavioural](questions/senior-and-behavioural.md) | 4 | The rounds where most candidates actually fail. |
 | [Model evaluation](questions/model-evaluation.md) | 7 | Perplexity, bits per byte, quantization damage, contamination. |
 | [Uncertainty quantification](questions/uncertainty-quantification.md) | 6 | Runtime confidence: semantic entropy, calibration, selective answering. |
@@ -59,7 +59,7 @@ Not everything here is equally certain, and the notes say so.
 
 ## A caveat on dates
 
-Compiled 10 September 2026. The protocol material is the most perishable: MCP's stateless revision was roughly six weeks old at the time of writing and SDK migration was still in flux. Re-check anything version-pinned before relying on it in an interview. The post-training, context engineering, cost and caching, LLM security, multimodal, LLMOps and data curation files were added 25 September 2026, and their pricing and limits come from provider docs fetched that day. Nine scenario questions on RAG, agents, PII, streaming and support-bot evals were added 2 November 2026.
+Compiled 10 September 2026. The protocol material is the most perishable: MCP's stateless revision was roughly six weeks old at the time of writing and SDK migration was still in flux. Re-check anything version-pinned before relying on it in an interview. The post-training, context engineering, cost and caching, LLM security, multimodal, LLMOps and data curation files were added 25 September 2026, and their pricing and limits come from provider docs fetched that day. Nine scenario questions on RAG, agents, PII, streaming and support-bot evals were added 2 November 2026. Two harder serving questions (diagnosing a slow vLLM endpoint, choosing a serving engine) were added 18 November 2026.
 
 ## Licence
 
