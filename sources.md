@@ -174,6 +174,7 @@ All fetched 2026-11-18.
 | [vLLM `serve` CLI](https://docs.vllm.ai/en/stable/cli/serve/) | `--scheduling-policy`: `fcfs` default, `priority` with lower value first |
 | [vLLM Automatic Prefix Caching](https://docs.vllm.ai/en/stable/design/prefix_caching/) | Blocks hashed on their own tokens plus the whole prefix, full blocks only, LRU eviction |
 | [NVIDIA NIM benchmarking metrics](https://docs.nvidia.com/nim/benchmarking/llm/latest/metrics.html) | TTFT includes queueing, prefill and network; AIPerf's ITL formula |
+| [NVIDIA, Useful nvidia-smi Queries](https://enterprise-support.nvidia.com/s/article/Useful-nvidia-smi-Queries-2) | `utilization.gpu` counts time when one or more kernels ran, not how much of the GPU they used |
 | [NVIDIA DCGM profiling](https://docs.nvidia.com/datacenter/dcgm/latest/learn/modules/profiling.html) | SM activity counts memory-waiting warps as active; 0.8 necessary but not sufficient; DRAM utilization ceiling around 0.8 |
 | [TensorRT-LLM paged attention and IFB](https://nvidia.github.io/TensorRT-LLM/latest/features/paged-attention-ifb-scheduler.html) | In-flight, continuous and iteration-level batching are one technique |
 | [SGLang](https://arxiv.org/abs/2312.07104), Zheng et al. | RadixAttention: radix tree, LRU eviction, compatible with paged attention; 1.7x average first-token gain on Vicuna-33B in production; up to 6.4x throughput on its benchmarks. NeurIPS 2024 |
