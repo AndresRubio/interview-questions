@@ -83,7 +83,7 @@ Quality grading reflects the source type, not agreement with it.
 | [RegMix](https://arxiv.org/abs/2407.01492) | ICLR 2025 |
 | [GPT-3](https://arxiv.org/abs/2005.14165) — Brown et al. | NeurIPS 2020 |
 | [Speculative decoding](https://arxiv.org/abs/2211.17192) — Leviathan, Kalman & Matias | ICML 2023 |
-| [PagedAttention / vLLM](https://arxiv.org/abs/2309.06180) — Kwon et al. | SOSP 2023 |
+| [PagedAttention / vLLM](https://arxiv.org/abs/2309.06180), Kwon et al. | SOSP 2023. Also the source for the 20.4% to 38.2% KV memory figure and the 13B memory split in inference question 14, rechecked 2026-11-18 |
 | [DistServe](https://arxiv.org/abs/2401.09670) — Zhong et al., prefill/decode disaggregation | OSDI 2024. Abstract fetched 2026-11-02 (7.4x requests, 12.6x tighter SLO, >90% within latency limits). |
 | [Sarathi-Serve](https://arxiv.org/abs/2403.02310) — Agrawal et al., chunked prefill | OSDI 2024. Abstract fetched 2026-11-02 (2.6x capacity for Mistral-7B on one A100 vs vLLM). |
 
@@ -172,8 +172,8 @@ All fetched 2026-11-18.
 | [Tensormesh, LLM Serving: A Complete Guide to Production Inference](https://tensormesh.ai/learn/llm-serving/), Matt Tanner, Sep 2026 | Starting point for questions 13 and 14 in inference and systems. Vendor guide (Tensormesh sells a KV cache layer), so each claim used was checked against the primary source it links |
 | [vLLM Optimization and Tuning](https://docs.vllm.ai/en/stable/configuration/optimization/) | Preemption warning and remedies, recompute default in V1, chunked prefill default and the `max_num_batched_tokens` trade |
 | [vLLM `serve` CLI](https://docs.vllm.ai/en/stable/cli/serve/) | `--scheduling-policy`: `fcfs` default, `priority` with lower value first |
+| [vLLM Automatic Prefix Caching](https://docs.vllm.ai/en/stable/design/prefix_caching/) | Blocks hashed on their own tokens plus the whole prefix, full blocks only, LRU eviction |
 | [NVIDIA NIM benchmarking metrics](https://docs.nvidia.com/nim/benchmarking/llm/latest/metrics.html) | TTFT includes queueing, prefill and network; AIPerf's ITL formula |
 | [NVIDIA DCGM profiling](https://docs.nvidia.com/datacenter/dcgm/latest/learn/modules/profiling.html) | SM activity counts memory-waiting warps as active; 0.8 necessary but not sufficient; DRAM utilization ceiling around 0.8 |
 | [TensorRT-LLM paged attention and IFB](https://nvidia.github.io/TensorRT-LLM/latest/features/paged-attention-ifb-scheduler.html) | In-flight, continuous and iteration-level batching are one technique |
-| [SGLang](https://arxiv.org/abs/2312.07104), Zheng et al. | RadixAttention: radix tree, LRU eviction, compatible with paged attention; 1.7x average first-token gain on Vicuna-33B in production; up to 6.4x throughput on its benchmarks. Preprint |
-| [PagedAttention / vLLM](https://arxiv.org/abs/2309.06180), Kwon et al. | 20.4% to 38.2% of KV memory used in earlier systems; 65% weights and about 30% request state for 13B on a 40 GB A100. SOSP 2023 |
+| [SGLang](https://arxiv.org/abs/2312.07104), Zheng et al. | RadixAttention: radix tree, LRU eviction, compatible with paged attention; 1.7x average first-token gain on Vicuna-33B in production; up to 6.4x throughput on its benchmarks. NeurIPS 2024 |
