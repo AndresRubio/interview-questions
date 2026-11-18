@@ -400,3 +400,68 @@ All this machinery pays off on large, repeated, deadline-tolerant work such as b
 The state model, retry policy, routing rules and illustrative numbers are my own design reasoning. Sources: OpenAI Batch API guide and batch-creation API reference, prompt caching and rate limits guides and pricing page; Anthropic batch processing guide, batch-creation API reference and rate limits docs, all fetched 2026-11-04.
 
 </details>
+
+---
+
+### 13. Your self-hosted vLLM endpoint feels slow under mixed traffic, yet the GPU dashboard says it's 90% busy. Diagnose it.
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+This is the hard version of the serving question, because every symptom has two or three possible causes and the usual dashboard number points the wrong way. Work through it in this order.
+
+**First, split the latency.** "Slow" is two different numbers with different causes. NVIDIA's benchmarking docs define time to first token (TTFT) as the time from submitting the query to the first received token, and it "generally includes request queuing time, prefill time, and network latency". Inter-token latency (ITL, also called time per output token) is the average gap between later tokens, `(e2e latency − TTFT) / (output tokens − 1)` in NVIDIA's AIPerf. The same page warns that tools differ on whether TTFT is folded into that average, so check which definition your load tester uses before comparing numbers. Then split both by workload class (chat versus batch jobs, short versus long prompts). Bad TTFT points at queueing and prefill. Bad ITL points at memory pressure or at prefills stalling running decodes.
+
+**Second, distrust the 90%.** NVIDIA's DCGM profiling docs define SM activity as the fraction of time at least one warp was active on a multiprocessor, and say outright that warps waiting on memory requests count as active. A value of 0.8 or more is "necessary, but not sufficient" for effective use, and one below 0.5 likely means the GPU is used poorly. Decode is memory-bandwidth bound (see [question 6](#6-why-is-single-user-decode-so-slow-on-a-gpu-that-costs-this-much-and-what-fixes-it)), so a card can read busy while it mostly waits on HBM. Look at memory bandwidth utilization instead (`DCGM_FI_PROF_DRAM_UTIL_RATIO`), where DCGM puts the practical ceiling around 0.8, and above all at useful throughput: output tokens per second per GPU while meeting your latency target.
+
+**Third, check for preemption.** When KV cache space runs out, vLLM doesn't fail the request. It preempts it, frees its cache and recomputes it later, and logs a warning that the sequence "is preempted by PreemptionMode.RECOMPUTE mode because there is not enough KV cache space". In V1, recompute is the default mode. This looks like a slow model, so people misdiagnose it. Count preemptions in the Prometheus metrics vLLM exposes. The docs list the fixes in this order, and each one costs something:
+
+- Leave `gpu_memory_utilization` unset or raise it. With the extensible KV cache (the default on CUDA and ROCm) it defaults to 1.0, and a lower value takes memory away from the cache.
+- Lower `max_num_seqs` or `max_num_batched_tokens`, which means fewer concurrent requests per batch and so less throughput.
+- Raise `tensor_parallel_size`. That shards each layer across GPUs so each one holds less weight and more cache, and the docs warn of extra synchronization overhead. It needs a fast interconnect, which is why it stays inside one node.
+- Raise `pipeline_parallel_size`. That gives each GPU a contiguous group of layers. Traffic between GPUs is lighter, but the docs warn of latency penalties, since stages wait on each other. A common layout is tensor parallel within a node and pipeline parallel across nodes.
+
+The capacity arithmetic behind all four is in [question 5](#5-youre-asked-to-self-host-llama-31-70b-for-32-concurrent-users-at-8k-context-how-many-gpus). Batch size and context length multiply into the same cache, so no scheduler setting removes the trade.
+
+**Fourth, look for prefill stalling decode.** If ITL spikes whenever someone pastes a long document, prefills are interrupting everyone's decodes. In V1, chunked prefill is on by default whenever possible. The scheduler batches all pending decodes first, then fills the rest of the `max_num_batched_tokens` budget with prefill, chunking any prompt that doesn't fit. The knob is a direct trade. vLLM's docs say smaller values (2048, for example) give better ITL, larger ones give better TTFT, and above 8192 suits throughput. [Question 10](#10-cut-first-token-latency-for-a-chat-app) covers disaggregating prefill and decode when one knob isn't enough.
+
+**Fifth, look for noisy neighbours.** vLLM's default `--scheduling-policy` is `fcfs`, first come first served. That's fine while requests look alike, and it breaks when a batch job and an interactive user share a queue, because the user waits behind the batch work. The `priority` policy orders by a per-request priority where a lower value is handled earlier, with arrival time breaking ties. My own caution: priority reorders the queue and doesn't add capacity, so a steady interactive load can starve the batch class. Often the cleaner fix is separate endpoints per workload class, as [question 12](#12-design-an-end-to-end-batching-system-for-llm-queries) does for batch work on your own GPUs.
+
+**Last, check prefix cache hits.** vLLM reuses KV blocks for an exact shared prefix, so a system prompt with a timestamp or a per-user field at the top defeats it on every request. Measure the hit rate, and fix the prompt layout as in [cost-and-caching.md question 3](cost-and-caching.md#3-what-makes-a-prompt-cache-friendly-and-how-do-people-accidentally-defeat-their-own-cache).
+
+What lands with an interviewer is the order: separate TTFT from ITL, replace the utilization gauge with bandwidth and useful throughput, then work through preemption, prefill interference, queue policy and cache hits, each with the metric that confirms it.
+
+Sources: vLLM "Optimization and Tuning" and `vllm serve` CLI docs; NVIDIA NIM benchmarking metrics; NVIDIA DCGM profiling docs, all fetched 2026-11-18. The question came from a Tensormesh guide, [*LLM Serving: A Complete Guide to Production Inference*](https://tensormesh.ai/learn/llm-serving/) (Matt Tanner, Sep 2026). Tensormesh sells a KV cache layer, so every claim above was checked against the primary docs it links to.
+
+</details>
+
+---
+
+### 14. vLLM, SGLang or TensorRT-LLM? And is RadixAttention a replacement for PagedAttention?
+
+`single-source`
+
+<details>
+<summary>Answer</summary>
+
+**They share a core, so pick on workload and hardware.** All three use a paged KV cache and continuous batching. The batching goes by three names: TensorRT-LLM's docs call it in-flight batching, "also known as continuous batching or iteration-level batching". The scheduler rebuilds the batch after every forward pass, so a finished sequence leaves at once and a new one waits a single step. Static batching, where the batch returns when its slowest member finishes, survives only in offline jobs where the requests are about the same length and nobody is waiting.
+
+**PagedAttention is the allocator.** Before it, servers reserved one contiguous buffer per request, sized for the maximum length. The vLLM paper measured that only 20.4% to 38.2% of KV cache memory in those systems held actual token state. PagedAttention splits the cache into fixed-size blocks that need not be contiguous and hands them out as the sequence grows, the way an OS pages memory. The same paper shows why this matters: for a 13B model on a 40 GB A100, about 65% of memory went to weights and close to 30% to per-request state, so cache waste directly caps the batch size (Kwon et al., SOSP 2023, arXiv 2309.06180).
+
+**RadixAttention works one layer up, so it isn't a replacement.** It decides which cached prefixes to keep and share across requests. The SGLang paper keeps the KV cache of prompts and generations in a radix tree after requests finish, evicts with LRU, and adds cache-aware scheduling to raise the hit rate. It says RadixAttention "is compatible with techniques like continuous batching, paged attention, and tensor parallelism". In its production deployment it reduced first-token latency by an average of 1.7x for Vicuna-33B. The abstract claims up to 6.4x higher throughput than the state-of-the-art systems it was compared against, on its own benchmarks (Zheng et al., arXiv 2312.07104). vLLM has its own automatic prefix caching too, so the real difference is how hard each one works to keep shared prefixes resident and route to them.
+
+**A decision rule:**
+
+- vLLM by default. It's the most common target for tooling, and it runs on hardware beyond NVIDIA.
+- SGLang when many requests share long prefixes: agent loops replaying context, multi-turn sessions, few-shot templates. Also when you lean on structured output, since its runtime has a dedicated fast path for constrained decoding.
+- TensorRT-LLM when you're committed to NVIDIA GPUs and peak throughput is worth an extra build step and more tuning.
+
+Then benchmark the shortlist on your own traffic at your own latency target. Published multiples between these engines change with each release.
+
+**What a senior answer adds: caching across replicas.** Each engine's prefix cache lives inside one replica and is lost on eviction or restart. Put several replicas behind a round-robin load balancer and the requests that share a prefix scatter across them, so each replica caches the prefix separately and the hit rate falls. Routing by session or prefix fixes much of that. External KV cache layers such as LMCache, the open-source project behind Tensormesh, go further by sharing the cache across replicas and storage tiers. The routing argument is my own reasoning, and the case for external cache layers comes from vendors selling them, so measure your hit rate before you buy.
+
+Sources: TensorRT-LLM "Paged Attention, IFB, and Request Scheduling" docs; the SGLang and vLLM papers, all fetched 2026-11-18. The framing follows the Tensormesh guide cited in [question 13](#13-your-self-hosted-vllm-endpoint-feels-slow-under-mixed-traffic-yet-the-gpu-dashboard-says-its-90-busy-diagnose-it).
+
+</details>

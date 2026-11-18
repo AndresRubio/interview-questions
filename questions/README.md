@@ -1,6 +1,6 @@
 # Questions
 
-121 questions across sixteen topics. Each answer sits behind a collapsible block. Answer out loud first, then expand.
+123 questions across sixteen topics. Each answer sits behind a collapsible block. Answer out loud first, then expand.
 
 | File | Questions | Focus |
 |---|---|---|
@@ -8,7 +8,7 @@
 | [agent-architecture.md](agent-architecture.md) | 9 | Loops, harnesses, benchmark fragility, tool reliability, stuck loops, a claims agent under a token budget. |
 | [retrieval-and-rag.md](retrieval-and-rag.md) | 10 | Where received wisdom fails controlled benchmarks. RAG design, debugging, hybrid search, rerankers, chunk size and overlap. |
 | [evaluation.md](evaluation.md) | 5 | Judge validation, biases, time budget, a support-bot eval suite. |
-| [inference-and-systems.md](inference-and-systems.md) | 12 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API, SSE streaming, first-token and total latency, batching. |
+| [inference-and-systems.md](inference-and-systems.md) | 14 | Serving, cost arithmetic, observability, GPU sizing, self-host vs API, SSE streaming, first-token and total latency, batching, slow-endpoint diagnosis, engine choice. |
 | [senior-and-behavioural.md](senior-and-behavioural.md) | 4 | Coding agents, decisions, the values round. |
 | [model-evaluation.md](model-evaluation.md) | 7 | Perplexity, BPB, quantization damage, contamination. |
 | [uncertainty-quantification.md](uncertainty-quantification.md) | 6 | Semantic entropy, calibration, selective answering. |

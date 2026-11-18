@@ -162,3 +162,18 @@ All fetched 2026-11-04.
 | [El Bachyr et al., Empirical Evaluation of PDF Parsing and Chunking](https://arxiv.org/abs/2604.12047) | Evidence for overlap on financial documents |
 | [Voyage embeddings API](https://docs.voyageai.com/reference/embeddings-api) | `truncation` default |
 | [LlamaIndex auto-merging retriever](https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/) | Leaf-to-parent merging |
+
+## Serving diagnosis and engine choice
+
+All fetched 2026-11-18.
+
+| Source | Used for |
+|---|---|
+| [Tensormesh, LLM Serving: A Complete Guide to Production Inference](https://tensormesh.ai/learn/llm-serving/), Matt Tanner, Sep 2026 | Starting point for questions 13 and 14 in inference and systems. Vendor guide (Tensormesh sells a KV cache layer), so each claim used was checked against the primary source it links |
+| [vLLM Optimization and Tuning](https://docs.vllm.ai/en/stable/configuration/optimization/) | Preemption warning and remedies, recompute default in V1, chunked prefill default and the `max_num_batched_tokens` trade |
+| [vLLM `serve` CLI](https://docs.vllm.ai/en/stable/cli/serve/) | `--scheduling-policy`: `fcfs` default, `priority` with lower value first |
+| [NVIDIA NIM benchmarking metrics](https://docs.nvidia.com/nim/benchmarking/llm/latest/metrics.html) | TTFT includes queueing, prefill and network; AIPerf's ITL formula |
+| [NVIDIA DCGM profiling](https://docs.nvidia.com/datacenter/dcgm/latest/learn/modules/profiling.html) | SM activity counts memory-waiting warps as active; 0.8 necessary but not sufficient; DRAM utilization ceiling around 0.8 |
+| [TensorRT-LLM paged attention and IFB](https://nvidia.github.io/TensorRT-LLM/latest/features/paged-attention-ifb-scheduler.html) | In-flight, continuous and iteration-level batching are one technique |
+| [SGLang](https://arxiv.org/abs/2312.07104), Zheng et al. | RadixAttention: radix tree, LRU eviction, compatible with paged attention; 1.7x average first-token gain on Vicuna-33B in production; up to 6.4x throughput on its benchmarks. Preprint |
+| [PagedAttention / vLLM](https://arxiv.org/abs/2309.06180), Kwon et al. | 20.4% to 38.2% of KV memory used in earlier systems; 65% weights and about 30% request state for 13B on a 40 GB A100. SOSP 2023 |
